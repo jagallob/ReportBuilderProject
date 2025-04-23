@@ -1,0 +1,35 @@
+# --- ReportBuilderAPI (.NET) ---
+bin/
+obj/
+out/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+.vscode/
+.vs/
+*.log
+*.db
+*.sqlite
+
+# Ignorar archivos de configuración con información sensible
+appsettings.Development.json
+appsettings.Production.json
+appsettings.json 
+
+# Permitir la plantilla de configuración base (no debe contener secretos)
+!appsettings.template.json
+!appsettings.example.json
+
+# --- report-builder-client (React - Vite) ---
+report-builder-client/node_modules/
+report-builder-client/dist/
+report-builder-client/.env
+report-builder-client/.env.local
+
+# --- Common ---
+.DS_Store
+*.swp
+*.swo
+.idea/
+
