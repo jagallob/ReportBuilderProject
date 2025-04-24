@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using ReportBuilderAPI.Data;
@@ -43,6 +44,12 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader());
 });
 
+//Para archivos pesados
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
+});
+
 var app = builder.Build();
 
     // Configure the HTTP request pipeline.
@@ -60,6 +67,7 @@ app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
 app.UseAuthorization();
 app.MapControllers();
+app.UseStaticFiles(); // permite servir archivos como /uploads/*
 
 app.Run();
   

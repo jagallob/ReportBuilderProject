@@ -11,6 +11,8 @@ namespace ReportBuilderAPI.Data
         public DbSet<Area> Areas { get; set; }
         public DbSet<Template> Templates { get; set; }
         public DbSet<EventLog> EventLogs { get; set; }
+        public DbSet<ExcelUpload> ExcelUploads { get; set; }
+        public DbSet<ReportSubmission> ReportSubmissions { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {

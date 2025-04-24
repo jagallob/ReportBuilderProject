@@ -6,5 +6,8 @@
         public string? FullName { get; set; }
         public string? Email { get; set; }
         public string? Role { get; set; } // Ej: "Admin", "Manager", "User"
+
+        public int? AreaId { get; set; }
+        public Area? Area { get; set; }
     }
 }
