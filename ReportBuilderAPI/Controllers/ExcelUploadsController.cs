@@ -1,7 +1,9 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ReportBuilderAPI.Data;
+using ReportBuilderAPI.DTOs;
 using ReportBuilderAPI.Models;
+using ReportBuilderAPI.Services;
 
 namespace ReportBuilderAPI.Controllers
 {
@@ -111,44 +113,44 @@ namespace ReportBuilderAPI.Controllers
         }
 
         [HttpPost("upload")]
-        public async Task<IActionResult> UploadExcel([FromForm] IFormFile file, [FromForm] int areaId, [FromForm] string period)
+        public async Task<IActionResult> UploadExcel([FromForm] ExcelUploadRequest request)
         {
-            if (file == null || file.Length == 0)
+            if (request.File == null || request.File.Length == 0)
                 return BadRequest("No se recibió ningún archivo.");
 
-            var area = await _context.Areas.FindAsync(areaId);
+            var area = await _context.Areas.FindAsync(request.AreaId);
             if (area == null)
                 return BadRequest("Área no encontrada.");
 
-            // Crear carpeta si no existe
             var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
             if (!Directory.Exists(uploadPath))
                 Directory.CreateDirectory(uploadPath);
 
-            // Guardar el archivo
-            var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+            var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(request.File.FileName)}";
             var filePath = Path.Combine(uploadPath, fileName);
 
             using (var stream = new FileStream(filePath, FileMode.Create))
             {
-                await file.CopyToAsync(stream);
+                await request.File.CopyToAsync(stream);
             }
 
-            // Registrar en base de datos
+            var extractedJson = ExcelProcessor.ExtractDataAsJson(filePath);
+
             var upload = new ExcelUpload
             {
-                AreaId = areaId,
+                AreaId = request.AreaId,
                 FileName = fileName,
-                Period = period,
-                UploadDate = DateTime.UtcNow
-                // ExtractedJsonData se procesará después
+                Period = request.Period,
+                UploadDate = DateTime.UtcNow,
+                ExtractedJsonData = extractedJson
             };
 
             _context.ExcelUploads.Add(upload);
             await _context.SaveChangesAsync();
 
-            return Ok(new { message = "Archivo subido correctamente.", uploadId = upload.Id });
+            return Ok(new { message = "Archivo subido correctamente", uploadId = upload.Id });
         }
+
 
     }
 }

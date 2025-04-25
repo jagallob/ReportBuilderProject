@@ -1,4 +1,6 @@
 ﻿using ClosedXML.Excel;
+using Newtonsoft.Json;
+
 
 namespace ReportBuilderAPI.Services
 {

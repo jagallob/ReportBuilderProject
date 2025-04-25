@@ -1,7 +1,15 @@
-using Microsoft.AspNetCore.Http.Features;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.OpenApi.Models;
 using ReportBuilderAPI.Data;
+using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using ReportBuilderAPI.Utils;
+using Microsoft.AspNetCore.Http.Features;
+using ReportBuilderAPI.Repositories.Interfaces;
+using ReportBuilderAPI.Repositories.Implementations;
+using ReportBuilderAPI.Service.Interface;
+using ReportBuilderAPI.Service.Implementations;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -9,11 +17,40 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Registrar repositorios
+builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+// Registrar servicios
+builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddSingleton<IJWTUtils, JWTUtils>();
+builder.Services.AddScoped<IUserService, UserService>();
+
+
 // Agregar controladores
 builder.Services.AddControllers()
 .AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.PropertyNamingPolicy = null;
+});
+
+// Configurar autenticacion con JWT
+builder.Services.AddAuthentication(options =>
+{
+    options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+    options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+})
+.AddJwtBearer(options =>
+{
+    options.TokenValidationParameters = new TokenValidationParameters
+    {
+        ValidateIssuer = true,
+        ValidateAudience = true,
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]!))
+    };
 });
 
 // Configurar Swagger
@@ -65,6 +102,7 @@ var app = builder.Build();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowReactApp");
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.UseStaticFiles(); // permite servir archivos como /uploads/*
