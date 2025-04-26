@@ -14,7 +14,7 @@ namespace ReportBuilderAPI.Utils
 
         public JWTUtils()
         {
-            var secretString = "843567893696976453275974432697R634976R738467TR678T34865R6834R8763T478378637664538745673865783678548735687R3";
+            var secretString = "SuperClaveUltraSecretaParaReportes123456789R$T%U!";
             _key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretString));
         }
 
@@ -23,9 +23,10 @@ namespace ReportBuilderAPI.Utils
             var claims = new List<Claim>
             {
                 new Claim(ClaimTypes.Name, user.Email.Trim()),
+                new Claim("name", user.FullName ?? ""), // Agregando el claim "name" para el frontend
                 new Claim("role", user.Role),
-                new Claim("id", user.Id
-                .ToString())
+                new Claim("id", user.Id.ToString()),
+                new Claim("areaId", user.AreaId?.ToString() ?? "")
             };
             return CreateToken(claims, ACCESS_TOKEN_EXPIRATION);
         }
@@ -46,8 +47,8 @@ namespace ReportBuilderAPI.Utils
             {
                 Subject = new ClaimsIdentity(claims),
                 Expires = DateTime.UtcNow.AddMilliseconds(expiration),
-                Issuer = "ExtraHoursAPI",
-                Audience = "ExtraHoursClient",
+                Issuer = "ReportBuilderAPI",
+                Audience = "ReportBuilderClient",
                 SigningCredentials = new SigningCredentials(_key, SecurityAlgorithms.HmacSha256Signature)
             };
             var tokenHandler = new JwtSecurityTokenHandler();

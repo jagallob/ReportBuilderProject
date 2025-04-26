@@ -4,14 +4,14 @@ namespace ReportBuilderAPI.Service.Interface
 {
     public interface IUserService
     {
-        Task<User> GetUserByIdAsync(long userId);
-        Task<User> GetUserByEmailAsync(string email);
-        Task<User?> FindByEmailAsync(string email);
+        Task<User> GetUserByIdAsync(long UserId);
+        Task<User> GetUserByEmailAsync(string Email);
+        Task<User?> FindByEmailAsync(string Email);
         Task<List<User>> GetAllAsync();
-        Task SaveUserAsync(User user);
-        Task UpdateUserAsync(User user);
-        Task DeleteUserAsync(long userId);
-        Task<bool> UserExistsAsync(long userId);
-        Task<bool> EmailExistsAsync(string email);
+        Task SaveUserAsync(User User);
+        Task UpdateUserAsync(User User);
+        Task DeleteUserAsync(long UserId);
+        Task<bool> UserExistsAsync(long UserId);
+        Task<bool> EmailExistsAsync(string Email);
     }
 }

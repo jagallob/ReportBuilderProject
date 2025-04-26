@@ -14,22 +14,25 @@ namespace ReportBuilderAPI.Repositories.Implementations
             _context = context;
         }
 
-        public async Task<User> GetUserByEmailAsync(string email)
+        public async Task<User> GetUserByEmailAsync(string Email)
         {
             return await _context.Users
+                .Include(u => u.Area)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Email == email)
+                .FirstOrDefaultAsync(u => u.Email == Email)
                 ?? throw new InvalidOperationException("User not found");
         }
-        public async Task<User?> FindByEmailAsync(string email)
+        public async Task<User?> FindByEmailAsync(string Email)
         {
             return await _context.Users
+                .Include(u => u.Area)
                 .AsNoTracking()
-                .FirstOrDefaultAsync(u => EF.Functions.Like(u.Email, email));
+                .FirstOrDefaultAsync(u => EF.Functions.Like(u.Email, Email));
         }
         public async Task<User> GetUserByIdAsync(long userId)
         {
             return await _context.Users
+                .Include(u => u.Area)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(u => u.Id == userId)
                 ?? throw new InvalidOperationException("User not found");
@@ -76,9 +79,9 @@ namespace ReportBuilderAPI.Repositories.Implementations
             await _context.SaveChangesAsync();
         }
 
-        public async Task<bool> EmailExistsAsync(string email)
+        public async Task<bool> EmailExistsAsync(string Email)
         {
-            return await _context.Users.AnyAsync(u => u.Email == email);
+            return await _context.Users.AnyAsync(u => u.Email == Email);
         }
 
     }

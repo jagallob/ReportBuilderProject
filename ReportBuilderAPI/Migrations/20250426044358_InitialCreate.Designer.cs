@@ -12,7 +12,7 @@ using ReportBuilderAPI.Data;
 namespace ReportBuilderAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250423004757_InitialCreate")]
+    [Migration("20250426044358_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -68,6 +68,76 @@ namespace ReportBuilderAPI.Migrations
                     b.ToTable("EventLogs");
                 });
 
+            modelBuilder.Entity("ReportBuilderAPI.Models.ExcelUpload", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ExtractedJsonData")
+                        .HasColumnType("text");
+
+                    b.Property<string>("FileName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("UploadDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.ToTable("ExcelUploads");
+                });
+
+            modelBuilder.Entity("ReportBuilderAPI.Models.ReportSubmission", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("AreaId")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ChartsConfigJson")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("GeneratedIndicators")
+                        .HasColumnType("text");
+
+                    b.Property<bool>("IsSubmitted")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Narrative")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Period")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
+
+                    b.ToTable("ReportSubmissions");
+                });
+
             modelBuilder.Entity("ReportBuilderAPI.Models.Template", b =>
                 {
                     b.Property<int>("Id")
@@ -95,16 +165,24 @@ namespace ReportBuilderAPI.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AreaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("Email")
                         .HasColumnType("text");
 
                     b.Property<string>("FullName")
                         .HasColumnType("text");
 
+                    b.Property<string>("Password")
+                        .HasColumnType("text");
+
                     b.Property<string>("Role")
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
 
                     b.ToTable("Users");
                 });
@@ -114,8 +192,39 @@ namespace ReportBuilderAPI.Migrations
                     b.HasOne("ReportBuilderAPI.Models.Area", "Area")
                         .WithMany()
                         .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+                });
+
+            modelBuilder.Entity("ReportBuilderAPI.Models.ExcelUpload", b =>
+                {
+                    b.HasOne("ReportBuilderAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Area");
+                });
+
+            modelBuilder.Entity("ReportBuilderAPI.Models.ReportSubmission", b =>
+                {
+                    b.HasOne("ReportBuilderAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Area");
+                });
+
+            modelBuilder.Entity("ReportBuilderAPI.Models.User", b =>
+                {
+                    b.HasOne("ReportBuilderAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId");
 
                     b.Navigation("Area");
                 });

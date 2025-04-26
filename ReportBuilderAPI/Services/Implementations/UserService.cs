@@ -2,8 +2,6 @@
 using ReportBuilderAPI.Repositories.Interfaces;
 using ReportBuilderAPI.Service.Interface;
 
-
-
 namespace ReportBuilderAPI.Service.Implementations
 {
     public class UserService : IUserService
@@ -15,19 +13,19 @@ namespace ReportBuilderAPI.Service.Implementations
             _userRepository = userRepository;
         }
 
-        public async Task<User> GetUserByIdAsync(long userId)
+        public async Task<User> GetUserByIdAsync(long UserId)
         {
-            return await _userRepository.GetUserByIdAsync(userId);
+            return await _userRepository.GetUserByIdAsync(UserId);
         }
 
-        public async Task<User> GetUserByEmailAsync(string email)
+        public async Task<User> GetUserByEmailAsync(string Email)
         {
-            return await _userRepository.GetUserByEmailAsync(email);
+            return await _userRepository.GetUserByEmailAsync(Email);
         }
 
-        public async Task<User?> FindByEmailAsync(string email)
+        public async Task<User?> FindByEmailAsync(string Email)
         {
-            return await _userRepository.FindByEmailAsync(email);
+            return await _userRepository.FindByEmailAsync(Email);
         }
 
         public async Task<List<User>> GetAllAsync()
@@ -35,26 +33,26 @@ namespace ReportBuilderAPI.Service.Implementations
             return await _userRepository.GetAllAsync();
         }
 
-        public async Task SaveUserAsync(User user)
+        public async Task SaveUserAsync(User User)
         {
-            await _userRepository.SaveAsync(user);
+            await _userRepository.SaveAsync(User);
         }
 
-        public async Task UpdateUserAsync(User user)
+        public async Task UpdateUserAsync(User User)
         {
-            await _userRepository.UpdateUserAsync(user);
+            await _userRepository.UpdateUserAsync(User);
         }
 
-        public async Task DeleteUserAsync(long userId)
+        public async Task DeleteUserAsync(long UserId)
         {
-            await _userRepository.DeleteUserAsync(userId);
+            await _userRepository.DeleteUserAsync(UserId);
         }
 
-        public async Task<bool> UserExistsAsync(long userId)
+        public async Task<bool> UserExistsAsync(long UserId)
         {
             try
             {
-                var user = await _userRepository.GetUserByIdAsync(userId);
+                var user = await _userRepository.GetUserByIdAsync(UserId);
                 return user != null;
             }
             catch (InvalidOperationException)
@@ -63,9 +61,9 @@ namespace ReportBuilderAPI.Service.Implementations
             }
         }
 
-        public async Task<bool> EmailExistsAsync(string email)
+        public async Task<bool> EmailExistsAsync(string Email)
         {
-            return await _userRepository.EmailExistsAsync(email);
+            return await _userRepository.EmailExistsAsync(Email);
         }
     }
 }

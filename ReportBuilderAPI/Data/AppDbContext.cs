@@ -19,6 +19,13 @@ namespace ReportBuilderAPI.Data
             base.OnModelCreating(modelBuilder);
 
             // Configuración de relaciones
+
+            modelBuilder.Entity<User>()
+             .HasOne(u => u.Area)
+             .WithMany()
+             .HasForeignKey(u => u.AreaId)
+             .OnDelete(DeleteBehavior.Restrict);
+
             modelBuilder.Entity<EventLog>()
                 .HasOne(e => e.Area)
                 .WithMany()
