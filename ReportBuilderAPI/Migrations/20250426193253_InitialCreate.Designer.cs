@@ -12,7 +12,7 @@ using ReportBuilderAPI.Data;
 namespace ReportBuilderAPI.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20250426044358_InitialCreate")]
+    [Migration("20250426193253_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -146,13 +146,27 @@ namespace ReportBuilderAPI.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
+                    b.Property<int?>("AreaId")
+                        .HasColumnType("integer");
+
                     b.Property<string>("ConfigurationJson")
+                        .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
                         .HasColumnType("text");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("AreaId");
 
                     b.ToTable("Templates");
                 });
@@ -220,11 +234,21 @@ namespace ReportBuilderAPI.Migrations
                     b.Navigation("Area");
                 });
 
-            modelBuilder.Entity("ReportBuilderAPI.Models.User", b =>
+            modelBuilder.Entity("ReportBuilderAPI.Models.Template", b =>
                 {
                     b.HasOne("ReportBuilderAPI.Models.Area", "Area")
                         .WithMany()
                         .HasForeignKey("AreaId");
+
+                    b.Navigation("Area");
+                });
+
+            modelBuilder.Entity("ReportBuilderAPI.Models.User", b =>
+                {
+                    b.HasOne("ReportBuilderAPI.Models.Area", "Area")
+                        .WithMany()
+                        .HasForeignKey("AreaId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.Navigation("Area");
                 });

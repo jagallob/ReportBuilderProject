@@ -54,6 +54,56 @@ namespace ReportBuilderAPI.Controllers
         }
 
         // POST: api/ExcelUploads
+        [HttpPost("upload")]
+        public async Task<IActionResult> UploadExcel([FromForm] IFormFile file, [FromForm] int areaId, [FromForm] string period)
+        {
+            if (file == null || file.Length == 0)
+                return BadRequest("No se recibió ningún archivo.");
+
+            if (string.IsNullOrEmpty(period))
+                return BadRequest("Debe especificar el período.");
+
+            var area = await _context.Areas.FindAsync(areaId);
+            if (area == null)
+                return BadRequest("Área no encontrada.");
+
+            // Guardar el archivo en la carpeta /uploads
+            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
+            if (!Directory.Exists(uploadPath))
+                Directory.CreateDirectory(uploadPath);
+
+            var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            // Procesar el archivo Excel
+            var extractedJson = ExcelProcessor.ExtractDataAsJson(filePath);
+
+            // Registrar el Upload en la base de datos
+            var upload = new ExcelUpload
+            {
+                AreaId = areaId,
+                FileName = fileName,
+                Period = period,
+                UploadDate = DateTime.UtcNow,
+                ExtractedJsonData = extractedJson
+            };
+
+            _context.ExcelUploads.Add(upload);
+            await _context.SaveChangesAsync();
+
+            return Ok(new
+            {
+                message = "Archivo subido correctamente",
+                uploadId = upload.Id
+            });
+        }
+
+       
         [HttpPost]
         public async Task<ActionResult<ExcelUpload>> CreateExcelUpload(ExcelUpload upload)
         {
@@ -111,46 +161,6 @@ namespace ReportBuilderAPI.Controllers
 
             return NoContent();
         }
-
-        [HttpPost("upload")]
-        public async Task<IActionResult> UploadExcel([FromForm] ExcelUploadRequest request)
-        {
-            if (request.File == null || request.File.Length == 0)
-                return BadRequest("No se recibió ningún archivo.");
-
-            var area = await _context.Areas.FindAsync(request.AreaId);
-            if (area == null)
-                return BadRequest("Área no encontrada.");
-
-            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads");
-            if (!Directory.Exists(uploadPath))
-                Directory.CreateDirectory(uploadPath);
-
-            var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(request.File.FileName)}";
-            var filePath = Path.Combine(uploadPath, fileName);
-
-            using (var stream = new FileStream(filePath, FileMode.Create))
-            {
-                await request.File.CopyToAsync(stream);
-            }
-
-            var extractedJson = ExcelProcessor.ExtractDataAsJson(filePath);
-
-            var upload = new ExcelUpload
-            {
-                AreaId = request.AreaId,
-                FileName = fileName,
-                Period = request.Period,
-                UploadDate = DateTime.UtcNow,
-                ExtractedJsonData = extractedJson
-            };
-
-            _context.ExcelUploads.Add(upload);
-            await _context.SaveChangesAsync();
-
-            return Ok(new { message = "Archivo subido correctamente", uploadId = upload.Id });
-        }
-
 
     }
 }

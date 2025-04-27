@@ -26,20 +26,6 @@ namespace ReportBuilderAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "Templates",
-                columns: table => new
-                {
-                    Id = table.Column<int>(type: "integer", nullable: false)
-                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
-                    Name = table.Column<string>(type: "text", nullable: true),
-                    ConfigurationJson = table.Column<string>(type: "text", nullable: true)
-                },
-                constraints: table =>
-                {
-                    table.PrimaryKey("PK_Templates", x => x.Id);
-                });
-
-            migrationBuilder.CreateTable(
                 name: "EventLogs",
                 columns: table => new
                 {
@@ -110,6 +96,28 @@ namespace ReportBuilderAPI.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "Templates",
+                columns: table => new
+                {
+                    Id = table.Column<int>(type: "integer", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    Name = table.Column<string>(type: "text", maxLength: 100, nullable: false),
+                    ConfigurationJson = table.Column<string>(type: "text", nullable: false),
+                    CreatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    UpdatedAt = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    AreaId = table.Column<int>(type: "integer", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Templates", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Templates_Areas_AreaId",
+                        column: x => x.AreaId,
+                        principalTable: "Areas",
+                        principalColumn: "Id");
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Users",
                 columns: table => new
                 {
@@ -128,7 +136,8 @@ namespace ReportBuilderAPI.Migrations
                         name: "FK_Users_Areas_AreaId",
                         column: x => x.AreaId,
                         principalTable: "Areas",
-                        principalColumn: "Id");
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
                 });
 
             migrationBuilder.CreateIndex(
@@ -144,6 +153,11 @@ namespace ReportBuilderAPI.Migrations
             migrationBuilder.CreateIndex(
                 name: "IX_ReportSubmissions_AreaId",
                 table: "ReportSubmissions",
+                column: "AreaId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Templates_AreaId",
+                table: "Templates",
                 column: "AreaId");
 
             migrationBuilder.CreateIndex(

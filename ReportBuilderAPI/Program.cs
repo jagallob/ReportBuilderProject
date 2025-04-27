@@ -138,6 +138,7 @@ var app = builder.Build();
         });
     }
 
+
 app.UseHttpsRedirection();
 app.UseAuthentication();
 app.UseCors(MyAllowSpecificOrigins);
