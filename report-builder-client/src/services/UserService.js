@@ -6,7 +6,7 @@ export const UserService = {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
-          "Content-Type": "application/json",
+          "Content-Type": "application/json; charset=UTF-8",
           Accept: "application/json",
         },
         body: JSON.stringify({ email, password }),

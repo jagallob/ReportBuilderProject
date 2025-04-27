@@ -16,12 +16,25 @@ const Dashboard = () => {
         </p>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+          {/* {user?.role === 'admin' && ( */}
+          <button
+            onClick={() => navigate("/dashboard/templates")}
+            className="bg-yellow-100 border border-yellow-300 rounded-lg p-4 text-left hover:shadow-lg transition"
+          >
+            <h2 className="text-lg font-semibold text-yellow-700 mb-2">
+              🛠 Editor de Plantillas
+            </h2>
+            <p className="text-sm text-gray-600">
+              Crea y modifica plantillas para los informes mensuales.
+            </p>
+          </button>
+          {/* )} */}
           <button
             onClick={() => navigate("/dashboard/upload")}
             className="bg-blue-100 border border-blue-300 rounded-lg p-4 text-left hover:shadow-lg transition"
           >
             <h2 className="text-lg font-semibold text-blue-700 mb-2">
-              📄 Plantilla del mes
+              📄 Subir archivos
             </h2>
             <p className="text-sm text-gray-600">
               Sube tu archivo Excel, visualiza los datos y ajusta los textos del

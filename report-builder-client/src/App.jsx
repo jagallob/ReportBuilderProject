@@ -1,9 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import LoginPage from "./pages/LoginPage";
-import Dashboard from "./pages/Dashboard";
 import PrivateRoute from "./routes/PrivateRoute";
-import BitacoraPage from "./pages/BitacoraPage";
-import UploadExcelPage from "./pages/UploadExcelPage";
+import TemplateEditorPage from "./pages/TemplateEditorPage";
 import ReportsPage from "./pages/ReportsPage";
 
 function App() {
@@ -15,30 +13,12 @@ function App() {
         path="/dashboard"
         element={
           <PrivateRoute
-            element={<Dashboard />}
+            element={<TemplateEditorPage />}
             allowedRoles={["admin", "manager", "user"]}
           />
         }
       />
 
-      <Route
-        path="/dashboard/upload"
-        element={
-          <PrivateRoute
-            element={<UploadExcelPage />}
-            allowedRoles={["admin", "manager", "user"]}
-          />
-        }
-      />
-      <Route
-        path="/dashboard/bitacora"
-        element={
-          <PrivateRoute
-            element={<BitacoraPage />}
-            allowedRoles={["admin", "manager", "user"]}
-          />
-        }
-      />
       <Route
         path="/dashboard/reports"
         element={
