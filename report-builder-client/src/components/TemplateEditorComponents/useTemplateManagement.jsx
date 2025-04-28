@@ -21,19 +21,39 @@ const useTemplateManagement = (initialTemplate) => {
     date: "",
   });
 
+  // Función para clonar seguro
+  const cloneTemplate = (prev) =>
+    typeof structuredClone === "function"
+      ? structuredClone(prev)
+      : JSON.parse(JSON.stringify(prev));
+
   const updateTemplate = (path, value) => {
-    const keys = path.split(".");
     setTemplate((prev) => {
-      const newTemplate = JSON.parse(JSON.stringify(prev));
-      let current = newTemplate;
+      try {
+        const keys = path.split(".");
+        const newTemplate = cloneTemplate(prev);
 
-      keys.slice(0, -1).forEach((key) => {
-        current[key] = { ...current[key] };
-        current = current[key];
-      });
+        let current = newTemplate;
+        for (let i = 0; i < keys.length - 1; i++) {
+          const key = keys[i];
+          if (current[key] == null) {
+            current[key] = {};
+          }
+          current = current[key];
+        }
 
-      current[keys[keys.length - 1]] = value;
-      return newTemplate;
+        const finalKey = keys[keys.length - 1];
+        current[finalKey] = value;
+
+        return newTemplate;
+      } catch (error) {
+        console.error("❌ Error actualizando plantilla:", {
+          path,
+          value,
+          error,
+        });
+        return prev;
+      }
     });
   };
 
@@ -50,6 +70,7 @@ const useTemplateManagement = (initialTemplate) => {
   };
 
   const removeSection = (index) => {
+    if (index < 0 || index >= template.sections.length) return;
     const newSections = [...template.sections];
     newSections.splice(index, 1);
     updateTemplate("sections", newSections);
@@ -57,17 +78,16 @@ const useTemplateManagement = (initialTemplate) => {
   };
 
   const addComponent = (sectionIndex, componentType) => {
+    if (sectionIndex < 0 || sectionIndex >= template.sections.length) return;
     const newComponent = {
       componentId: uuidv4(),
       type: componentType,
       dataSource: { sourceType: "manual" },
       displayOptions: {},
     };
-
-    const updatedSections = [...template.sections];
+    const updatedSections = cloneTemplate(template.sections);
     updatedSections[sectionIndex].components.push(newComponent);
     updateTemplate("sections", updatedSections);
-
     setSelectedItem({
       type: "component",
       sectionIndex,
@@ -79,24 +99,46 @@ const useTemplateManagement = (initialTemplate) => {
     if (fromSection === toSection && fromIndex === toIndex) return;
 
     setTemplate((prev) => {
-      const newTemplate = JSON.parse(JSON.stringify(prev));
-      const [moved] = newTemplate.sections[fromSection].components.splice(
-        fromIndex,
-        1
-      );
+      try {
+        const newTemplate = cloneTemplate(prev);
+        const sections = newTemplate.sections;
 
-      if (toIndex >= newTemplate.sections[toSection].components.length) {
-        newTemplate.sections[toSection].components.push(moved);
-      } else {
-        newTemplate.sections[toSection].components.splice(toIndex, 0, moved);
+        if (
+          !sections[fromSection] ||
+          !sections[toSection] ||
+          !sections[fromSection].components[fromIndex]
+        ) {
+          console.error("⚠️ Movimiento inválido de componente.");
+          return prev;
+        }
+
+        const [moved] = sections[fromSection].components.splice(fromIndex, 1);
+
+        if (toIndex >= sections[toSection].components.length) {
+          sections[toSection].components.push(moved);
+        } else {
+          sections[toSection].components.splice(toIndex, 0, moved);
+        }
+
+        return newTemplate;
+      } catch (error) {
+        console.error("❌ Error moviendo componente:", error);
+        return prev;
       }
-
-      return newTemplate;
     });
   };
 
   const removeComponent = (sectionIndex, componentIndex) => {
-    const updatedSections = [...template.sections];
+    if (
+      sectionIndex < 0 ||
+      sectionIndex >= template.sections.length ||
+      componentIndex < 0 ||
+      componentIndex >= template.sections[sectionIndex].components.length
+    ) {
+      return;
+    }
+
+    const updatedSections = cloneTemplate(template.sections);
     updatedSections[sectionIndex].components.splice(componentIndex, 1);
     updateTemplate("sections", updatedSections);
     setSelectedItem(null);
@@ -120,20 +162,101 @@ const useTemplateManagement = (initialTemplate) => {
   };
 
   const addEventToSection = (sectionIndex) => {
-    const updatedSections = [...template.sections];
+    if (sectionIndex < 0 || sectionIndex >= template.sections.length) return;
+
+    const updatedSections = cloneTemplate(template.sections);
     updatedSections[sectionIndex].events = [
       ...(updatedSections[sectionIndex].events || []),
       { ...eventData, id: uuidv4() },
     ];
     updateTemplate("sections", updatedSections);
+    resetEventData();
     setIsModalOpen(false);
-    setEventData({ title: "", description: "", date: "" });
   };
 
   const removeEvent = (sectionIndex, eventIndex) => {
-    const updatedSections = [...template.sections];
+    if (
+      sectionIndex < 0 ||
+      sectionIndex >= template.sections.length ||
+      eventIndex < 0 ||
+      eventIndex >= (template.sections[sectionIndex].events || []).length
+    ) {
+      return;
+    }
+
+    const updatedSections = cloneTemplate(template.sections);
     updatedSections[sectionIndex].events.splice(eventIndex, 1);
     updateTemplate("sections", updatedSections);
+  };
+
+  const resetEventData = () => {
+    setEventData({ title: "", description: "", date: "" });
+  };
+
+  const generateDefaultStructure = () => {
+    const defaultSections = [
+      {
+        sectionId: uuidv4(),
+        title: "Introducción",
+        type: "text",
+        components: [
+          {
+            componentId: uuidv4(),
+            type: "text",
+            content:
+              "Este informe presenta los resultados clave del período...",
+            dataSource: { sourceType: "manual" },
+          },
+        ],
+        events: [],
+      },
+      {
+        sectionId: uuidv4(),
+        title: "Cuerpo del Informe",
+        type: "composite",
+        components: [
+          {
+            componentId: uuidv4(),
+            type: "chart",
+            chartType: "bar",
+            dataSource: {
+              sourceType: "excel",
+              mappings: {}, // Para que el usuario complete
+            },
+          },
+          {
+            componentId: uuidv4(),
+            type: "kpi",
+            value: "",
+            unit: "%",
+            dataSource: { sourceType: "excel" },
+          },
+        ],
+        events: [],
+      },
+      {
+        sectionId: uuidv4(),
+        title: "Conclusiones",
+        type: "text",
+        components: [
+          {
+            componentId: uuidv4(),
+            type: "text",
+            content: "En conclusión, los resultados muestran...",
+            dataSource: { sourceType: "manual" },
+          },
+        ],
+        events: [],
+      },
+    ];
+
+    updateTemplate("sections", defaultSections);
+
+    updateTemplate("metadata.templateType", "informe-mensual");
+    updateTemplate(
+      "metadata.description",
+      "Plantilla estándar para informes mensuales"
+    );
   };
 
   return {
@@ -153,6 +276,7 @@ const useTemplateManagement = (initialTemplate) => {
     handleFileUpload,
     addEventToSection,
     removeEvent,
+    generateDefaultStructure,
   };
 };
 

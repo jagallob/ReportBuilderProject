@@ -2,7 +2,12 @@ import React from "react";
 import DraggableItem from "./DraggableItem";
 import TemplateMetadataForm from "./TemplateMetadataForm";
 
-const ComponentPalette = ({ addSection, template, updateTemplate }) => {
+const ComponentPalette = ({
+  addSection,
+  template,
+  updateTemplate,
+  generateDefaultStructure,
+}) => {
   const componentTypes = [
     { type: "text", name: "Texto", icon: "📝" },
     { type: "table", name: "Tabla", icon: "📊" },
@@ -31,6 +36,12 @@ const ComponentPalette = ({ addSection, template, updateTemplate }) => {
         + Añadir Sección
       </button>
 
+      <button
+        onClick={generateDefaultStructure}
+        className="w-full mb-4 px-3 py-2 bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-200"
+      >
+        Usar plantilla base
+      </button>
       <TemplateMetadataForm
         template={template}
         updateTemplate={updateTemplate}

@@ -1,4 +1,5 @@
 import React from "react";
+import ExcelUploadButton from "./ExcelUploadButton";
 
 const ChartConfig = ({ component, onUpdate }) => {
   return (
@@ -34,6 +35,18 @@ const ChartConfig = ({ component, onUpdate }) => {
               onChange={(e) => onUpdate("dataSource.apiUrl", e.target.value)}
               className="w-full p-1 border rounded text-sm"
               placeholder="https://..."
+            />
+          </div>
+        )}
+
+        {/* Si es Excel, mostrar botón para subir archivo */}
+        {component.dataSource?.sourceType === "excel" && (
+          <div className="col-span-2">
+            <label className="block text-xs text-gray-500 mb-1">
+              Subir Excel
+            </label>
+            <ExcelUploadButton
+              onUpload={(data) => onUpdate("dataSource.excelData", data)}
             />
           </div>
         )}

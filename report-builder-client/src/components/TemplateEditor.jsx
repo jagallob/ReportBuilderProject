@@ -11,7 +11,7 @@ import HeaderActions from "../layouts/HeaderActions";
 const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
   const navigate = useNavigate();
   const onViewReports = () => {
-    navigate("/dashboard/reports");
+    navigate("/reports");
   };
   const {
     template,
@@ -30,6 +30,7 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
     handleFileUpload,
     addEventToSection,
     removeEvent,
+    generateDefaultStructure,
   } = useTemplateManagement(initialTemplate);
 
   return (
@@ -40,6 +41,7 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
           addSection={addSection}
           template={template}
           updateTemplate={updateTemplate}
+          generateDefaultStructure={generateDefaultStructure}
         />
 
         <SectionsArea

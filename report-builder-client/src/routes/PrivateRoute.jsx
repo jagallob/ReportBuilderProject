@@ -17,7 +17,7 @@ const PrivateRoute = ({ element, allowedRoles = [] }) => {
 
   // Si no tiene permisos
   if (!permittedRoles.includes(userRole)) {
-    return <Navigate to="/menu" replace />;
+    return <Navigate to="/" replace />;
   }
 
   // Usuario autenticado y con permisos

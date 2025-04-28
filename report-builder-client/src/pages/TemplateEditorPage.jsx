@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "react-toastify";
 import TemplateEditor from "../components/TemplateEditor";
 import { TemplateService } from "../services/TemplateService";
-import { useNavigate, useParams } from "react-router-dom";
+import UserService from "../services/UserService";
 
 const TemplateEditorPage = () => {
   const { id } = useParams();
@@ -31,6 +33,7 @@ const TemplateEditorPage = () => {
           });
         }
       } catch (err) {
+        console.error("Error cargando plantilla:", err);
         setError(err.message);
       } finally {
         setLoading(false);
@@ -42,15 +45,30 @@ const TemplateEditorPage = () => {
 
   const handleSave = async (templateData) => {
     try {
+      const areaId = UserService.getUserAreaId();
+      const payload = {
+        name: templateData.metadata?.description || "Nueva plantilla",
+        areaId: areaId ? parseInt(areaId) : 1, // Fallback en caso de que no haya área
+        configuration: {
+          metadata: templateData.metadata,
+          sections: templateData.sections,
+          header: templateData.header || {},
+          footer: templateData.footer || {},
+          settings: templateData.settings || {},
+        },
+      };
       if (id) {
-        await TemplateService.updateTemplate(id, templateData);
+        await TemplateService.updateTemplate(id, payload);
+        toast.success("Plantilla actualizada correctamente ✅");
       } else {
-        await TemplateService.createTemplate(templateData);
+        await TemplateService.createTemplate(payload);
+        toast.success("Plantilla creada correctamente 🎉");
       }
-      alert("Plantilla guardada exitosamente ✅");
+
       navigate("/dashboard/reports");
     } catch (err) {
       console.error("Error guardando plantilla:", err);
+      toast.error("Error al guardar la plantilla ❌");
       setError(err.message);
     }
   };
