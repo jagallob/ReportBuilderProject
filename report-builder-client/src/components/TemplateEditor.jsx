@@ -1,17 +1,20 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import ComponentPalette from "./TemplateEditorComponents/ComponentPalette";
 import SectionsArea from "./TemplateEditorComponents/SectionsArea";
 import ConfigurationPanel from "./TemplateEditorComponents/ConfigurationPanel";
+import PreviewPanel from "./TemplateEditorComponents/PreviewPanel";
+import PreviewButton from "./TemplateEditorComponents/PreviewButton";
 import useTemplateManagement from "./TemplateEditorComponents/useTemplateManagement";
 import HeaderActions from "../layouts/HeaderActions";
 
 const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
   const navigate = useNavigate();
+  const [showPreview, setShowPreview] = useState(false);
   const onViewReports = () => {
-    navigate("/reports");
+    navigate("/dashboard/reports");
   };
   const {
     template,
@@ -33,9 +36,14 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
     generateDefaultStructure,
   } = useTemplateManagement(initialTemplate);
 
+  const togglePreview = () => {
+    setShowPreview(!showPreview);
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <HeaderActions onViewReports={onViewReports} onCancel={onCancel} />
+
       <div className="flex h-screen bg-gray-50">
         <ComponentPalette
           addSection={addSection}
@@ -57,6 +65,7 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
           onSave={onSave}
           onCancel={onCancel}
           initialTemplate={initialTemplate}
+          onPreview={togglePreview}
         />
 
         {selectedItem && (
@@ -76,6 +85,10 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
             setIsModalOpen={setIsModalOpen}
             addEventToSection={() => addEventToSection(selectedItem.index)}
           />
+        )}
+
+        {showPreview && (
+          <PreviewPanel template={template} onClose={togglePreview} />
         )}
       </div>
     </DndProvider>

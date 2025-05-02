@@ -1,5 +1,6 @@
 import React from "react";
 import Section from "./Section";
+import PreviewButton from "./PreviewButton";
 
 const SectionsArea = ({
   template,
@@ -11,9 +12,12 @@ const SectionsArea = ({
   moveComponent,
   removeComponent,
   handleFileUpload,
+  updateTemplate,
+  removeEvent,
   onSave,
   onCancel,
   initialTemplate,
+  onPreview,
 }) => {
   return (
     <div className="flex-1 p-6 overflow-y-auto">
@@ -28,6 +32,10 @@ const SectionsArea = ({
           >
             Cancelar
           </button>
+          <PreviewButton
+            onClick={onPreview}
+            disabled={template.sections.length === 0}
+          />
           <button
             onClick={() => onSave(template)}
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm"
@@ -63,6 +71,18 @@ const SectionsArea = ({
               moveComponent={moveComponent}
               removeComponent={removeComponent}
               handleFileUpload={handleFileUpload}
+              updateTemplate={(path, value) => {
+                if (path.includes("${")) {
+                  // Convertir string template a path real
+                  const realPath = path
+                    .replace("${index}", index)
+                    .replace(/\${([^}]*)}/g, (_, variable) => variable);
+                  return updateTemplate(realPath, value);
+                } else {
+                  return updateTemplate(`sections.${index}.${path}`, value);
+                }
+              }}
+              removeEvent={(eventIndex) => removeEvent(index, eventIndex)}
             />
           ))}
         </div>

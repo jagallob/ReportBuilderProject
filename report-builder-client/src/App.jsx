@@ -3,7 +3,8 @@ import LoginPage from "./pages/LoginPage";
 import PrivateRoute from "./routes/PrivateRoute";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
 import ReportsPage from "./pages/ReportsPage";
-import { Toaster } from "react-hot-toast";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 function App() {
   return (
@@ -31,15 +32,16 @@ function App() {
           }
         />
       </Routes>
-      <Toaster
+
+      <ToastContainer
         position="top-right"
-        toastOptions={{
-          duration: 3000,
-          style: {
-            background: "#333",
-            color: "#fff",
-          },
-        }}
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="colored"
       />
     </>
   );
