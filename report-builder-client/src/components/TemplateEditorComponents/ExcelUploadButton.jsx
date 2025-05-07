@@ -1,17 +1,31 @@
-import React from "react";
+import React, { useRef } from "react";
 
 const ExcelUploadButton = ({ sectionIndex, handleFileUpload }) => {
+  const fileInputRef = useRef(null);
+
+  const triggerFileInput = () => {
+    fileInputRef.current.click();
+  };
+
+  const onFileChange = (event) => {
+    handleFileUpload(sectionIndex, event);
+  };
+
   return (
-    <div className="mt-2">
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        Subir archivo Excel
-      </label>
+    <div className="mt-4">
       <input
         type="file"
-        accept=".xlsx, .xls"
-        onChange={(e) => handleFileUpload(sectionIndex, e)}
-        className="w-full p-2 border rounded text-sm"
+        ref={fileInputRef}
+        onChange={onFileChange}
+        accept=".xlsx,.xls,.csv"
+        style={{ display: "none" }}
       />
+      <button
+        onClick={triggerFileInput}
+        className="w-full px-3 py-2 flex items-center justify-center bg-green-50 text-green-600 rounded-md hover:bg-green-100 border border-green-200"
+      >
+        <span className="mr-2">📊</span> Subir datos Excel
+      </button>
     </div>
   );
 };

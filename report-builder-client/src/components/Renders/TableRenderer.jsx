@@ -1,44 +1,39 @@
 export const TableRenderer = ({ component, excelData }) => {
-  // Usar datos de Excel si están disponibles y la fuente es excel
-  const useExcelData =
-    component.dataSource?.sourceType === "excel" &&
-    excelData &&
-    excelData.length > 0;
+  // Buscar datos en múltiples ubicaciones posibles
+  const data =
+    component.dataSource?.excelData ||
+    excelData ||
+    (component.dataSource?.sourceType === "excel" && component.excelData);
 
-  // Determinar filas y columnas
-  const rows = useExcelData ? excelData.length - 1 : component.rows || 3;
-  const columns = useExcelData ? excelData[0].length : component.columns || 2;
+  if (!data?.headers || !data.rows) {
+    return <div className="p-4 text-gray-500">No hay datos disponibles</div>;
+  }
+
+  // Filtrar columnas según selección
+  const visibleColumns = component.dataSource?.selectedColumns || data.headers;
+  const columnIndexes = visibleColumns.map((col) => data.headers.indexOf(col));
 
   return (
-    <div className="overflow-auto">
-      <table className="min-w-full border-collapse border border-gray-300">
-        <thead className="bg-gray-100">
+    <div className="overflow-x-auto">
+      <table className="min-w-full border">
+        <thead>
           <tr>
-            {Array.from({ length: columns }).map((_, i) => (
-              <th
-                key={i}
-                className="border border-gray-300 px-4 py-2 text-left"
-              >
-                {useExcelData && excelData[0][i]
-                  ? excelData[0][i]
-                  : `Columna ${i + 1}`}
+            {visibleColumns.map((header, index) => (
+              <th key={index} className="px-4 py-2 border bg-gray-100">
+                {header}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {Array.from({ length: rows }).map((_, rowIndex) => (
+          {data.rows.map((row, rowIndex) => (
             <tr
               key={rowIndex}
               className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}
             >
-              {Array.from({ length: columns }).map((_, colIndex) => (
-                <td key={colIndex} className="border border-gray-300 px-4 py-2">
-                  {useExcelData &&
-                  excelData[rowIndex + 1] &&
-                  excelData[rowIndex + 1][colIndex]
-                    ? excelData[rowIndex + 1][colIndex]
-                    : `Celda ${rowIndex + 1},${colIndex + 1}`}
+              {columnIndexes.map((colIndex, i) => (
+                <td key={i} className="px-4 py-2 border">
+                  {colIndex >= 0 ? row[colIndex] : ""}
                 </td>
               ))}
             </tr>

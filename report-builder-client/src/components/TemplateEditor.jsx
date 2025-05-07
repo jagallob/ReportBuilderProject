@@ -62,6 +62,7 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
           moveComponent={moveComponent}
           removeComponent={removeComponent}
           handleFileUpload={handleFileUpload}
+          updateTemplate={updateTemplate}
           onSave={onSave}
           onCancel={onCancel}
           initialTemplate={initialTemplate}
@@ -75,6 +76,8 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
             updateTemplate={updateTemplate}
             setIsModalOpen={setIsModalOpen}
             removeEvent={removeEvent}
+            handleFileUpload={handleFileUpload}
+            currentSection={template.sections[selectedItem.index]}
           />
         )}
 

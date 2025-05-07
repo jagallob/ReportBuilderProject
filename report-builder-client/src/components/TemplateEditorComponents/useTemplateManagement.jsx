@@ -36,10 +36,28 @@ const useTemplateManagement = (initialTemplate) => {
         let current = newTemplate;
         for (let i = 0; i < keys.length - 1; i++) {
           const key = keys[i];
-          if (current[key] == null) {
-            current[key] = {};
+          // Manejo especial para índices de array
+          if (key.includes("[") && key.includes("]")) {
+            const arrayName = key.substring(0, key.indexOf("["));
+            const arrayIndex = parseInt(
+              key.substring(key.indexOf("[") + 1, key.indexOf("]"))
+            );
+
+            if (!current[arrayName]) {
+              current[arrayName] = [];
+            }
+
+            if (!current[arrayName][arrayIndex]) {
+              current[arrayName][arrayIndex] = {};
+            }
+
+            current = current[arrayName][arrayIndex];
+          } else {
+            if (current[key] == null) {
+              current[key] = {};
+            }
+            current = current[key];
           }
-          current = current[key];
         }
 
         const finalKey = keys[keys.length - 1];
@@ -85,6 +103,20 @@ const useTemplateManagement = (initialTemplate) => {
       dataSource: { sourceType: "manual" },
       displayOptions: {},
     };
+
+    // Inicialización de propiedades específicas según el tipo
+    if (componentType === "text") {
+      newComponent.content = "";
+    } else if (componentType === "table") {
+      newComponent.rows = 3;
+      newComponent.columns = 2;
+    } else if (componentType === "chart") {
+      newComponent.chartType = "bar";
+    } else if (componentType === "kpi") {
+      newComponent.value = "";
+      newComponent.unit = "%";
+    }
+
     const updatedSections = cloneTemplate(template.sections);
     updatedSections[sectionIndex].components.push(newComponent);
     updateTemplate("sections", updatedSections);
@@ -150,13 +182,60 @@ const useTemplateManagement = (initialTemplate) => {
 
     const reader = new FileReader();
     reader.onload = (e) => {
-      const data = new Uint8Array(e.target.result);
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+        const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-      updateTemplate(`sections.${sectionIndex}.excelData`, jsonData);
+        // Procesamos los datos para un formato más útil
+        const headers = jsonData[0] || [];
+        const rows = jsonData.slice(1);
+
+        const processedData = {
+          headers,
+          rows,
+          rawData: jsonData,
+        };
+
+        setTemplate((prev) => {
+          const newTemplate = cloneTemplate(prev);
+          if (!newTemplate.sections[sectionIndex]) return prev;
+
+          // 1. Guardar datos en la sección
+          newTemplate.sections[sectionIndex].excelData = processedData;
+
+          // 2. Actualizar componentes que usen Excel
+          newTemplate.sections[sectionIndex].components.forEach((component) => {
+            if (component.dataSource?.sourceType === "excel") {
+              // Asegurar que existe el objeto dataSource
+              if (!component.dataSource) {
+                component.dataSource = { sourceType: "excel" };
+              }
+              // Guardar copia completa de los datos
+              component.dataSource.excelData = processedData;
+              // Inicializar mappings si no existen
+              if (!component.dataSource.mappings) {
+                component.dataSource.mappings = {
+                  columns: headers,
+                  xAxisField: headers[0] || "",
+                  yAxisField: headers[1] || "",
+                };
+              }
+            }
+          });
+
+          return newTemplate;
+        });
+
+        console.log("✅ Excel cargado correctamente:", {
+          headers: headers.length,
+          rows: rows.length,
+        });
+      } catch (error) {
+        console.error("❌ Error al procesar Excel:", error);
+      }
     };
     reader.readAsArrayBuffer(file);
   };
