@@ -1,7 +1,11 @@
+import React from "react";
 import {
   BarChart,
   LineChart,
   PieChart,
+  AreaChart,
+  ScatterChart,
+  RadarChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -10,7 +14,14 @@ import {
   Bar,
   Line,
   Pie,
+  Area,
+  Scatter,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  Radar,
   Cell,
+  ResponsiveContainer,
 } from "recharts";
 
 const COLORS = [
@@ -22,108 +33,302 @@ const COLORS = [
   "#82ca9d",
 ];
 
-export const ChartRenderer = ({ component, excelData }) => {
-  // Datos de ejemplo para mostrar si no hay datos reales
-  const sampleData = [
-    { name: "Ene", valor: 400 },
-    { name: "Feb", valor: 300 },
-    { name: "Mar", valor: 600 },
-    { name: "Abr", valor: 800 },
-    { name: "May", valor: 500 },
-  ];
+export const ChartRenderer = ({ component, excelData: propsExcelData }) => {
+  // Buscar datos en múltiples ubicaciones posibles
+  const excelData =
+    component.dataSource?.excelData ||
+    propsExcelData ||
+    (component.dataSource?.sourceType === "excel" && component.excelData);
 
-  // Procesar datos desde Excel si está disponible y corresponde
-  let chartData = sampleData;
-  if (
-    component.dataSource?.sourceType === "excel" &&
-    excelData &&
-    excelData.length > 1
-  ) {
-    // Convertir los datos de Excel a formato de gráfico
-    // Asumimos que la primera fila son cabeceras y la primera columna son etiquetas
-    chartData = [];
-    const headers = excelData[0];
+  // Verificar si tenemos datos y mapeos
+  const mappings = component.dataSource?.mappings || {};
+  const { xAxisField, yAxisField, seriesField } = mappings;
 
-    for (let i = 1; i < excelData.length; i++) {
-      const row = excelData[i];
-      if (row && row.length) {
-        const item = { name: row[0] || `Item ${i}` };
+  // Procesar datos desde Excel si está disponible
+  let chartData = [];
 
-        // Agregar cada valor como una propiedad con su encabezado correspondiente
-        for (let j = 1; j < Math.min(headers.length, row.length); j++) {
-          const key = headers[j] || `valor${j}`;
-          item[key] = isNaN(Number(row[j])) ? 0 : Number(row[j]);
-        }
+  if (component.dataSource?.sourceType === "excel" && excelData?.rows) {
+    if (xAxisField && yAxisField) {
+      // Obtener índices de las columnas seleccionadas
+      const xIndex = excelData.headers.indexOf(xAxisField);
+      const yIndex = excelData.headers.indexOf(yAxisField);
+      const seriesIndex = seriesField
+        ? excelData.headers.indexOf(seriesField)
+        : -1;
 
-        chartData.push(item);
+      // Verificar si estamos agrupando por serie
+      if (seriesIndex >= 0 && seriesField && component.chartType !== "pie") {
+        // Procesar datos con series (para gráficos que no son de tipo pie)
+        const seriesGroups = {};
+
+        // Primer paso: agrupar datos por categoría X
+        excelData.rows.forEach((row) => {
+          if (xIndex >= 0 && yIndex >= 0) {
+            const xValue = row[xIndex];
+            const yValue = Number(row[yIndex]) || 0;
+            const seriesValue = row[seriesIndex];
+
+            if (!seriesGroups[xValue]) {
+              seriesGroups[xValue] = { name: xValue };
+            }
+
+            seriesGroups[xValue][seriesValue] = yValue;
+          }
+        });
+
+        // Convertir a array para recharts
+        chartData = Object.values(seriesGroups);
+      } else {
+        // Procesar datos sin series
+        chartData = excelData.rows.map((row) => {
+          const item = {};
+
+          // Obtener valores
+          item.name =
+            xIndex >= 0 ? row[xIndex] : `Item ${chartData.length + 1}`;
+          item.value =
+            yIndex >= 0 && !isNaN(Number(row[yIndex]))
+              ? Number(row[yIndex])
+              : 0;
+
+          return item;
+        });
       }
     }
+  } else if (component.data) {
+    // Datos manuales si existen
+    chartData = component.data;
+  } else {
+    // Datos de muestra
+    chartData = [
+      { name: "Ene", value: 400 },
+      { name: "Feb", value: 300 },
+      { name: "Mar", value: 600 },
+      { name: "Abr", value: 800 },
+      { name: "May", value: 500 },
+    ];
   }
 
-  // Determinar la propiedad para graficar (para gráficos de barras/líneas)
-  const dataKey =
-    (chartData.length > 0 &&
-      Object.keys(chartData[0]).find((key) => key !== "name")) ||
-    "valor";
+  // Determinar si hay series (para leyendas)
+  const hasSeries =
+    seriesField &&
+    component.dataSource?.sourceType === "excel" &&
+    component.chartType !== "pie";
 
+  // Lista de series para crear múltiples barras/líneas
+  let seriesList = [];
+  if (hasSeries && chartData.length > 0) {
+    // Obtener todas las claves excepto "name"
+    seriesList = Object.keys(chartData[0]).filter((key) => key !== "name");
+  }
+
+  // Configuraciones compartidas
+  const commonProps = {
+    width: 500,
+    height: 300,
+    data: chartData,
+    margin: { top: 5, right: 30, left: 20, bottom: 5 },
+  };
+
+  // Determinar si mostrar elementos
+  const showLegend = component.showLegend !== false;
+  const showTooltip = component.showTooltip !== false;
+  const stackBars = component.stackBars || false;
+  const fillArea = component.fillArea || false;
+
+  // Renderizar según el tipo de gráfico
   switch (component.chartType || "bar") {
     case "bar":
       return (
-        <BarChart
-          width={500}
-          height={300}
-          data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Bar dataKey={dataKey} fill="#8884d8" />
-        </BarChart>
+        <ResponsiveContainer width="100%" height={300}>
+          <BarChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            {showTooltip && <Tooltip />}
+            {showLegend && <Legend />}
+
+            {hasSeries ? (
+              // Renderizar múltiples barras para cada serie
+              seriesList.map((serie, index) => (
+                <Bar
+                  key={serie}
+                  dataKey={serie}
+                  fill={COLORS[index % COLORS.length]}
+                  stackId={stackBars ? "stack" : index}
+                />
+              ))
+            ) : (
+              // Renderizar una sola barra
+              <Bar
+                dataKey="value"
+                fill="#8884d8"
+                name={yAxisField || "Valor"}
+              />
+            )}
+          </BarChart>
+        </ResponsiveContainer>
       );
+
     case "line":
       return (
-        <LineChart
-          width={500}
-          height={300}
-          data={chartData}
-          margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-        >
-          <CartesianGrid strokeDasharray="3 3" />
-          <XAxis dataKey="name" />
-          <YAxis />
-          <Tooltip />
-          <Legend />
-          <Line type="monotone" dataKey={dataKey} stroke="#8884d8" />
-        </LineChart>
+        <ResponsiveContainer width="100%" height={300}>
+          <LineChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            {showTooltip && <Tooltip />}
+            {showLegend && <Legend />}
+
+            {hasSeries ? (
+              // Renderizar múltiples líneas para cada serie
+              seriesList.map((serie, index) => (
+                <Line
+                  key={serie}
+                  type="monotone"
+                  dataKey={serie}
+                  stroke={COLORS[index % COLORS.length]}
+                  fill={fillArea ? COLORS[index % COLORS.length] : undefined}
+                  fillOpacity={fillArea ? 0.3 : 0}
+                />
+              ))
+            ) : (
+              // Renderizar una sola línea
+              <Line
+                type="monotone"
+                dataKey="value"
+                stroke="#8884d8"
+                name={yAxisField || "Valor"}
+                fill={fillArea ? "#8884d8" : undefined}
+                fillOpacity={fillArea ? 0.3 : 0}
+              />
+            )}
+          </LineChart>
+        </ResponsiveContainer>
       );
+
+    case "area":
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <AreaChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" />
+            <YAxis />
+            {showTooltip && <Tooltip />}
+            {showLegend && <Legend />}
+
+            {hasSeries ? (
+              // Renderizar múltiples áreas para cada serie
+              seriesList.map((serie, index) => (
+                <Area
+                  key={serie}
+                  type="monotone"
+                  dataKey={serie}
+                  stroke={COLORS[index % COLORS.length]}
+                  fill={COLORS[index % COLORS.length]}
+                  fillOpacity={0.6}
+                  stackId={stackBars ? "stack" : undefined}
+                />
+              ))
+            ) : (
+              // Renderizar una sola área
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#8884d8"
+                fill="#8884d8"
+                fillOpacity={0.6}
+                name={yAxisField || "Valor"}
+              />
+            )}
+          </AreaChart>
+        </ResponsiveContainer>
+      );
+
     case "pie":
       return (
-        <PieChart width={500} height={300}>
-          <Tooltip />
-          <Legend />
-          <Pie
-            data={chartData}
-            cx={250}
-            cy={150}
-            labelLine={true}
-            outerRadius={100}
-            fill="#8884d8"
-            dataKey={dataKey}
-            nameKey="name"
-          >
-            {chartData.map((_, index) => (
-              <Cell
-                key={`cell-${index}`}
-                fill={COLORS[index % COLORS.length]}
-              />
-            ))}
-          </Pie>
-        </PieChart>
+        <ResponsiveContainer width="100%" height={300}>
+          <PieChart>
+            {showTooltip && <Tooltip />}
+            {showLegend && <Legend />}
+            <Pie
+              data={chartData}
+              cx="50%"
+              cy="50%"
+              labelLine={true}
+              outerRadius={100}
+              fill="#8884d8"
+              dataKey="value"
+              nameKey="name"
+            >
+              {chartData.map((_, index) => (
+                <Cell
+                  key={`cell-${index}`}
+                  fill={COLORS[index % COLORS.length]}
+                />
+              ))}
+            </Pie>
+          </PieChart>
+        </ResponsiveContainer>
       );
+
+    case "scatter":
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <ScatterChart {...commonProps}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="name" type="category" />
+            <YAxis dataKey="value" />
+            {showTooltip && <Tooltip cursor={{ strokeDasharray: "3 3" }} />}
+            {showLegend && <Legend />}
+            <Scatter
+              name={yAxisField || "Valor"}
+              data={chartData}
+              fill="#8884d8"
+            />
+          </ScatterChart>
+        </ResponsiveContainer>
+      );
+
+    case "radar":
+      return (
+        <ResponsiveContainer width="100%" height={300}>
+          <RadarChart cx="50%" cy="50%" outerRadius={100} data={chartData}>
+            <PolarGrid />
+            <PolarAngleAxis dataKey="name" />
+            <PolarRadiusAxis />
+            {showTooltip && <Tooltip />}
+            {showLegend && <Legend />}
+
+            {hasSeries ? (
+              // Renderizar múltiples radares para cada serie
+              seriesList.map((serie, index) => (
+                <Radar
+                  key={serie}
+                  name={serie}
+                  dataKey={serie}
+                  stroke={COLORS[index % COLORS.length]}
+                  fill={COLORS[index % COLORS.length]}
+                  fillOpacity={0.6}
+                />
+              ))
+            ) : (
+              // Renderizar un solo radar
+              <Radar
+                name={yAxisField || "Valor"}
+                dataKey="value"
+                stroke="#8884d8"
+                fill="#8884d8"
+                fillOpacity={0.6}
+              />
+            )}
+          </RadarChart>
+        </ResponsiveContainer>
+      );
+
     default:
-      return <div>Tipo de gráfico no soportado</div>;
+      return <div>Tipo de gráfico no soportado: {component.chartType}</div>;
   }
 };
+
+export default ChartRenderer;

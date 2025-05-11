@@ -1,9 +1,9 @@
-import React from "react";
 import { useDrag, useDrop } from "react-dnd";
 import TextConfig from "./TextConfig";
 import TableConfig from "./TableConfig";
 import ChartConfig from "./ChartConfig";
 import KpiConfig from "./KpiConfig";
+import ChartRenderer from "../Renders/ChartRenderer";
 
 const Component = ({
   component,
@@ -14,6 +14,7 @@ const Component = ({
   onUpdate,
   onMove,
   removeComponent,
+  excelData,
 }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "COMPONENT",
@@ -47,6 +48,19 @@ const Component = ({
     { type: "kpi", name: "KPI", icon: "🔢" },
   ];
 
+  // Componente wrapper para mostrar la previsualización
+  const renderPreview = () => {
+    if (component.type === "chart") {
+      return (
+        <div className="mt-4 p-3 border rounded bg-gray-50">
+          <h4 className="text-sm font-medium mb-2">Previsualización</h4>
+          <ChartRenderer component={component} excelData={excelData} />
+        </div>
+      );
+    }
+    return null;
+  };
+
   const renderConfig = () => {
     switch (component.type) {
       case "text":
@@ -54,12 +68,42 @@ const Component = ({
       case "table":
         return <TableConfig component={component} onUpdate={onUpdate} />;
       case "chart":
-        return <ChartConfig component={component} onUpdate={onUpdate} />;
+        return (
+          <>
+            <ChartConfig
+              component={component}
+              onUpdate={onUpdate}
+              excelData={excelData}
+            />
+            {renderPreview()}
+          </>
+        );
       case "kpi":
         return <KpiConfig component={component} onUpdate={onUpdate} />;
       default:
         return null;
     }
+  };
+
+  // Helper para determinar si hay datos cargados para mostrar advertencia
+  const hasDataToShow = () => {
+    if (
+      component.type === "chart" &&
+      component.dataSource?.sourceType === "excel"
+    ) {
+      const data =
+        component.dataSource?.excelData ||
+        excelData ||
+        (component.dataSource?.sourceType === "excel" && component.excelData);
+
+      const mappings = component.dataSource.mappings || {};
+      return !!(
+        data?.rows?.length &&
+        mappings.xAxisField &&
+        mappings.yAxisField
+      );
+    }
+    return true;
   };
 
   return (
@@ -102,6 +146,16 @@ const Component = ({
       </div>
 
       {renderConfig()}
+      {/* Mostrar advertencia si no hay datos cargados */}
+      {!hasDataToShow() && component.type === "chart" && (
+        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+          <p>Para visualizar el gráfico, asegúrate de:</p>
+          <ol className="list-decimal ml-4 mt-1">
+            <li>Cargar un archivo Excel</li>
+            <li>Seleccionar las columnas para los ejes X e Y</li>
+          </ol>
+        </div>
+      )}
     </div>
   );
 };
