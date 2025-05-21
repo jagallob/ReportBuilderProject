@@ -4,10 +4,26 @@ const TextConfig = ({ component, onUpdate, sectionData }) => {
   const [excelColumns, setExcelColumns] = useState([]);
 
   useEffect(() => {
-    if (sectionData?.excelData?.headers) {
+    console.log("sectionData recibido:", sectionData);
+    console.log("Headers de Excel:", sectionData?.excelData?.headers);
+
+    if (
+      sectionData?.excelData?.headers &&
+      Array.isArray(sectionData.excelData.headers)
+    ) {
+      console.log(
+        "Headers de Excel encontrados:",
+        sectionData.excelData.headers
+      );
       setExcelColumns(sectionData.excelData.headers);
+    } else {
+      console.warn("No se encontraron headers de Excel en sectionData", {
+        sectionData: sectionData,
+      });
     }
   }, [sectionData]);
+
+  console.log("Estado actual de excelColumns:", excelColumns);
 
   return (
     <div className="space-y-4">
@@ -72,23 +88,30 @@ const TextConfig = ({ component, onUpdate, sectionData }) => {
             <label className="block text-sm font-medium mb-1">
               Columna a analizar
             </label>
-            <select
-              value={component.analysisConfig?.dataColumn || ""}
-              onChange={(e) =>
-                onUpdate("analysisConfig.dataColumn", e.target.value)
-              }
-              className="w-full p-2 border rounded"
-            >
-              <option value="">Seleccionar columna</option>
-              {excelColumns.map((col, idx) => (
-                <option key={idx} value={col}>
-                  {col}
-                </option>
-              ))}
-            </select>
+            {excelColumns.length > 0 ? (
+              <select
+                value={component.analysisConfig?.dataColumn || ""}
+                onChange={(e) =>
+                  onUpdate("analysisConfig.dataColumn", e.target.value)
+                }
+                className="w-full p-2 border rounded"
+              >
+                <option value="">Seleccionar columna</option>
+                {excelColumns.map((col, idx) => (
+                  <option key={idx} value={col}>
+                    {col}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="w-full p-2 border rounded bg-gray-50 text-gray-500">
+                No hay datos de Excel cargados. Por favor, carga un archivo
+                Excel primero.
+              </div>
+            )}
           </div>
 
-          {excelColumns.length > 1 && (
+          {excelColumns.length > 0 && (
             <div>
               <label className="block text-sm font-medium mb-1">
                 Columna de categoría (opcional)

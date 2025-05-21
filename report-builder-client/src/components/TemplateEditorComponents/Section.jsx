@@ -1,202 +1,189 @@
-import React from "react";
-import { useDrop } from "react-dnd";
-import Component from "./Component";
+import { useDrag, useDrop } from "react-dnd";
+import TextConfig from "./TextConfig";
+import TableConfig from "./TableConfig";
+import ChartConfig from "./ChartConfig";
+import KpiConfig from "./KpiConfig";
+import ChartRenderer from "../Renders/ChartRenderer";
 
-const Section = ({
-  section,
-  index,
-  selectedItem,
-  setSelectedItem,
-  removeSection,
-  addComponent,
-  moveComponent,
+const Component = ({
+  component,
+  sectionIndex,
+  componentIndex,
+  isSelected,
+  onSelect,
+  onUpdate,
+  onMove,
   removeComponent,
-  handleFileUpload,
-  updateTemplate,
-  removeEvent,
+  sectionData, // Ahora recibimos sectionData en lugar de solo excelData
 }) => {
-  const isSelected =
-    selectedItem &&
-    selectedItem.type === "section" &&
-    selectedItem.index === index;
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: "COMPONENT",
+    item: {
+      sectionIndex,
+      componentIndex,
+    },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }));
 
   const [{ isOver }, drop] = useDrop(() => ({
-    accept: "COMPONENT_TYPE",
-    drop: (item) => {
-      addComponent(index, item.type);
-      return { dropped: true };
-    },
+    accept: "COMPONENT",
+    drop: (item) =>
+      onMove(
+        item.sectionIndex,
+        item.componentIndex,
+        sectionIndex,
+        componentIndex
+      ),
     collect: (monitor) => ({
       isOver: !!monitor.isOver(),
     }),
   }));
 
-  const getSectionStyle = () => {
-    let style = "p-4 border rounded mb-4 ";
+  const componentTypes = [
+    { type: "text", name: "Texto", icon: "📝" },
+    { type: "table", name: "Tabla", icon: "📊" },
+    { type: "chart", name: "Gráfico", icon: "📈" },
+    { type: "kpi", name: "KPI", icon: "🔢" },
+  ];
 
-    if (isSelected) {
-      style += "ring-2 ring-blue-500 ";
-    } else {
-      style += "border-gray-300 ";
+  // Componente wrapper para mostrar la previsualización
+  const renderPreview = () => {
+    if (component.type === "chart") {
+      return (
+        <div className="mt-4 p-3 border rounded bg-gray-50">
+          <h4 className="text-sm font-medium mb-2">Previsualización</h4>
+          <ChartRenderer component={component} excelData={getExcelData()} />
+        </div>
+      );
     }
+    return null;
+  };
 
-    if (isOver) {
-      style += "bg-blue-50";
-    } else {
-      style += "bg-white";
+  // Función para obtener datos de Excel desde múltiples fuentes
+  const getExcelData = () => {
+    return (
+      component.dataSource?.excelData ||
+      sectionData?.excelData || { headers: [], rows: [] }
+    );
+  };
+
+  const renderConfig = () => {
+    const excelData = getExcelData();
+
+    switch (component.type) {
+      case "text":
+        return (
+          <TextConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData} // Pasamos toda la sectionData
+          />
+        );
+      case "table":
+        return (
+          <TableConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData}
+            isExcelLoaded={!!excelData?.headers?.length}
+          />
+        );
+      case "chart":
+        return (
+          <>
+            <ChartConfig
+              component={component}
+              onUpdate={onUpdate}
+              excelData={excelData}
+            />
+            {renderPreview()}
+          </>
+        );
+      case "kpi":
+        return (
+          <KpiConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData}
+          />
+        );
+      default:
+        return null;
     }
+  };
 
-    return style;
+  // Helper para determinar si hay datos cargados para mostrar advertencia
+  const hasDataToShow = () => {
+    if (
+      component.type === "chart" &&
+      component.dataSource?.sourceType === "excel"
+    ) {
+      const data = getExcelData();
+      const mappings = component.dataSource.mappings || {};
+      return !!(
+        data?.rows?.length &&
+        mappings.xAxisField &&
+        mappings.yAxisField
+      );
+    }
+    return true;
   };
 
   return (
     <div
-      ref={drop}
-      className={getSectionStyle()}
-      onClick={(e) => {
-        e.stopPropagation();
-        setSelectedItem({ type: "section", index });
-      }}
+      ref={(node) => drag(drop(node))}
+      className={`p-3 border rounded ${
+        isDragging ? "opacity-50" : "opacity-100"
+      } ${
+        isOver ? "bg-blue-100 border-blue-300" : "bg-white border-gray-300"
+      } ${isSelected ? "ring-2 ring-blue-500" : ""}`}
+      onClick={onSelect}
     >
-      <div className="flex justify-between items-center mb-4">
-        <h3 className="text-lg font-medium">{section.title}</h3>
-        <div className="flex space-x-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setSelectedItem({ type: "section", index });
-            }}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm"
+      <div className="flex justify-between items-center mb-2">
+        <div className="flex items-center">
+          <span className="mr-2">
+            {componentTypes.find((t) => t.type === component.type)?.icon}
+          </span>
+          <select
+            value={component.type}
+            onChange={(e) => onUpdate("type", e.target.value)}
+            className="p-1 border rounded"
+            onClick={(e) => e.stopPropagation()}
           >
-            Editar
-          </button>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              removeSection(index);
-            }}
-            className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-sm"
-          >
-            Eliminar
-          </button>
+            {componentTypes.map((type) => (
+              <option key={type.type} value={type.type}>
+                {type.name}
+              </option>
+            ))}
+          </select>
         </div>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            removeComponent(sectionIndex, componentIndex);
+          }}
+          className="text-red-500 hover:text-red-700"
+        >
+          Eliminar
+        </button>
       </div>
 
-      {/* Botón para cargar archivos Excel usando handleFileUpload */}
-      {!section.excelData && (
-        <div className="mb-4">
-          <input
-            type="file"
-            id={`excel-upload-${index}`}
-            accept=".xlsx,.xls,.csv"
-            style={{ display: "none" }}
-            onChange={(e) => handleFileUpload(index, e)}
-          />
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              document.getElementById(`excel-upload-${index}`).click();
-            }}
-            className="px-3 py-1 bg-green-500 text-white rounded hover:bg-green-600 text-sm"
-          >
-            Cargar datos Excel
-          </button>
-        </div>
-      )}
+      {renderConfig()}
 
-      {section.excelData && (
-        <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded">
-          <div className="flex justify-between items-center">
-            <span className="font-medium text-green-600">
-              Datos Excel cargados
-            </span>
-            <span className="text-sm text-green-700">
-              {section.excelData.headers.length} columnas,{" "}
-              {section.excelData.rows.length} filas
-            </span>
-          </div>
-        </div>
-      )}
-
-      {section.components.length > 0 ? (
-        <div className="space-y-3">
-          {section.components.map((component, componentIndex) => (
-            <Component
-              key={component.componentId}
-              component={component}
-              sectionIndex={index}
-              componentIndex={componentIndex}
-              isSelected={
-                selectedItem &&
-                selectedItem.type === "component" &&
-                selectedItem.sectionIndex === index &&
-                selectedItem.componentIndex === componentIndex
-              }
-              onSelect={(e) => {
-                e.stopPropagation();
-                setSelectedItem({
-                  type: "component",
-                  sectionIndex: index,
-                  componentIndex,
-                });
-              }}
-              onUpdate={(path, value) => {
-                updateTemplate(`components.${componentIndex}.${path}`, value);
-              }}
-              onMove={moveComponent}
-              removeComponent={removeComponent}
-            />
-          ))}
-        </div>
-      ) : (
-        <div className="p-4 border border-dashed border-gray-300 rounded text-center text-gray-500">
-          Arrastra componentes aquí o
-          <div className="flex justify-center gap-2 mt-2">
-            {["text", "table", "chart", "kpi"].map((type) => (
-              <button
-                key={type}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  addComponent(index, type);
-                }}
-                className="px-2 py-1 bg-gray-200 rounded text-sm hover:bg-gray-300"
-              >
-                + {type}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {section.events && section.events.length > 0 && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Sucesos</h4>
-          <div className="grid grid-cols-1 gap-2">
-            {section.events.map((event, eventIndex) => (
-              <div
-                key={event.id || eventIndex}
-                className="p-2 bg-yellow-50 border border-yellow-200 rounded"
-              >
-                <div className="flex justify-between">
-                  <span className="font-medium">{event.title}</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      removeEvent(eventIndex);
-                    }}
-                    className="text-red-500 hover:text-red-700 text-xs"
-                  >
-                    ×
-                  </button>
-                </div>
-                <span className="text-sm text-gray-600">{event.date}</span>
-              </div>
-            ))}
-          </div>
+      {/* Mostrar advertencia si no hay datos cargados */}
+      {!hasDataToShow() && component.type === "chart" && (
+        <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700">
+          <p>Para visualizar el gráfico, asegúrate de:</p>
+          <ol className="list-decimal ml-4 mt-1">
+            <li>Cargar un archivo Excel en la sección</li>
+            <li>Seleccionar las columnas para los ejes X e Y</li>
+          </ol>
         </div>
       )}
     </div>
   );
 };
 
-export default Section;
+export default Component;
