@@ -5,7 +5,8 @@ import ChartConfig from "./ChartConfig";
 import KpiConfig from "./KpiConfig";
 import ChartRenderer from "../Renders/ChartRenderer";
 
-const Component = ({
+// Renombrar el componente original para evitar conflicto de nombres
+const SectionComponent = ({
   component,
   sectionIndex,
   componentIndex,
@@ -186,4 +187,110 @@ const Component = ({
   );
 };
 
-export default Component;
+const Section = ({
+  section,
+  index,
+  selectedItem,
+  setSelectedItem,
+  removeSection,
+  addComponent,
+  moveComponent,
+  removeComponent,
+  updateTemplate,
+}) => {
+  const hasComponents = section.components && section.components.length > 0;
+
+  // Habilitar drop para arrastrar desde la paleta
+  const [{ isOver, canDrop }, drop] = useDrop({
+    accept: "COMPONENT_TYPE",
+    drop: (item) => {
+      // item.type es el tipo de componente arrastrado
+      addComponent(index, item.type);
+    },
+    collect: (monitor) => ({
+      isOver: !!monitor.isOver(),
+      canDrop: !!monitor.canDrop(),
+    }),
+  });
+
+  return (
+    <div
+      ref={drop}
+      className={`mb-6 border rounded-lg p-4 bg-white shadow-sm transition-all ${
+        isOver && canDrop ? "ring-2 ring-green-400 bg-green-50" : ""
+      }`}
+    >
+      <div className="flex justify-between items-center mb-2">
+        <h2 className="text-lg font-semibold text-blue-700">
+          {section.title || `Sección ${index + 1}`}
+        </h2>
+        <button
+          onClick={() => removeSection(index)}
+          className="text-red-500 hover:text-red-700 text-sm"
+        >
+          Eliminar sección
+        </button>
+      </div>
+      {/* Botón para agregar componentes si no hay ninguno */}
+      {!hasComponents && (
+        <div className="my-4 p-4 bg-gray-50 border border-gray-200 rounded flex flex-col items-center">
+          <p className="mb-2 text-gray-500">Esta sección no tiene componentes.</p>
+          <div className="flex gap-2">
+            <button
+              onClick={() => addComponent(index, "text")}
+              className="px-3 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 text-xs"
+            >
+              + Texto
+            </button>
+            <button
+              onClick={() => addComponent(index, "table")}
+              className="px-3 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200 text-xs"
+            >
+              + Tabla
+            </button>
+            <button
+              onClick={() => addComponent(index, "chart")}
+              className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded hover:bg-yellow-200 text-xs"
+            >
+              + Gráfico
+            </button>
+            <button
+              onClick={() => addComponent(index, "kpi")}
+              className="px-3 py-1 bg-purple-100 text-purple-700 rounded hover:bg-purple-200 text-xs"
+            >
+              + KPI
+            </button>
+          </div>
+        </div>
+      )}
+      {/* Renderizar cada componente existente */}
+      {hasComponents &&
+        section.components.map((component, componentIndex) => (
+          <SectionComponent
+            key={component.componentId || componentIndex}
+            component={component}
+            sectionIndex={index}
+            componentIndex={componentIndex}
+            isSelected={
+              selectedItem?.type === "component" &&
+              selectedItem.sectionIndex === index &&
+              selectedItem.componentIndex === componentIndex
+            }
+            onSelect={() =>
+              setSelectedItem({
+                type: "component",
+                sectionIndex: index,
+                componentIndex,
+              })
+            }
+            onUpdate={updateTemplate}
+            onMove={moveComponent}
+            removeComponent={removeComponent}
+            sectionData={section}
+          />
+        ))}
+    </div>
+  );
+};
+
+export default Section;
