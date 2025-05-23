@@ -80,7 +80,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     options.SwaggerDoc("v1", new OpenApiInfo
     {
-        Title = "ReportBuilderAPI",
+        Title = "ReportBuilderProject",
         Version = "v1",
         Description = "Plantilla para generar informes.",
         Contact = new OpenApiContact
@@ -133,7 +133,7 @@ var app = builder.Build();
         app.UseSwagger(); // Habilitar Swagger
         app.UseSwaggerUI(options =>
         {
-            options.SwaggerEndpoint("/swagger/v1/swagger.json", "ReportBuilderAPI v1");
+            options.SwaggerEndpoint("/swagger/v1/swagger.json", "ReportBuilderProject v1");
             options.RoutePrefix = "swagger"; // Ruta base para la interfaz de Swagger
         });
     }
