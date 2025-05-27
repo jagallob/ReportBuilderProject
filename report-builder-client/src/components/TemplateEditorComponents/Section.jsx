@@ -70,6 +70,45 @@ const SectionComponent = ({
     );
   };
 
+  // Función para obtener un objeto base según el tipo de componente
+  const getBaseComponent = (type) => {
+    switch (type) {
+      case "text":
+        return {
+          type: "text",
+          content: "",
+        };
+      case "table":
+        return {
+          type: "table",
+          columns: [],
+          dataSource: {
+            sourceType: "manual",
+            excelData: { headers: [], rows: [] },
+          },
+        };
+      case "chart":
+        return {
+          type: "chart",
+          chartType: "bar",
+          dataSource: {
+            sourceType: "manual",
+            excelData: { headers: [], rows: [] },
+            mappings: {},
+          },
+          options: {},
+        };
+      case "kpi":
+        return {
+          type: "kpi",
+          value: 0,
+          label: "",
+        };
+      default:
+        return { type };
+    }
+  };
+
   const renderConfig = () => {
     const excelData = getExcelData();
 
@@ -140,7 +179,11 @@ const SectionComponent = ({
       } ${
         isOver ? "bg-blue-100 border-blue-300" : "bg-white border-gray-300"
       } ${isSelected ? "ring-2 ring-blue-500" : ""}`}
-      onClick={onSelect}
+      onClick={(e) => {
+        e.stopPropagation(); // Asegura que solo este click seleccione
+        if (onSelect) onSelect();
+      }}
+      style={{ cursor: "pointer" }}
     >
       <div className="flex justify-between items-center mb-2">
         <div className="flex items-center">
@@ -149,9 +192,20 @@ const SectionComponent = ({
           </span>
           <select
             value={component.type}
-            onChange={(e) => onUpdate("type", e.target.value)}
+            onChange={(e) => {
+              const newType = e.target.value;
+              if (newType !== component.type) {
+                const newComponent = getBaseComponent(newType);
+                // Mantener el id si existe para evitar problemas de key
+                if (component.componentId)
+                  newComponent.componentId = component.componentId;
+                if (onUpdate)
+                  onUpdate("components." + componentIndex, newComponent);
+                if (onSelect) onSelect();
+              }
+            }}
             className="p-1 border rounded"
-            onClick={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()} // Evita que el select cambie la selección
           >
             {componentTypes.map((type) => (
               <option key={type.type} value={type.type}>
@@ -234,7 +288,9 @@ const Section = ({
       {/* Botón para agregar componentes si no hay ninguno */}
       {!hasComponents && (
         <div className="my-4 p-4 bg-gray-50 border border-gray-200 rounded flex flex-col items-center">
-          <p className="mb-2 text-gray-500">Esta sección no tiene componentes.</p>
+          <p className="mb-2 text-gray-500">
+            Esta sección no tiene componentes.
+          </p>
           <div className="flex gap-2">
             <button
               onClick={() => addComponent(index, "text")}
