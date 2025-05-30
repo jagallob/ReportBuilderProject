@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
+import { PlusIcon } from "@heroicons/react/24/outline";
 import ComponentPalette from "./TemplateEditorComponents/ComponentPalette";
 import SectionsArea from "./TemplateEditorComponents/SectionsArea";
 import ConfigurationPanel from "./TemplateEditorComponents/ConfigurationPanel";
@@ -10,10 +11,14 @@ import PreviewButton from "./TemplateEditorComponents/PreviewButton";
 import useTemplateManagement from "./TemplateEditorComponents/useTemplateManagement";
 import HeaderActions from "../layouts/HeaderActions";
 import EventModal from "./TemplateEditorComponents/EventModal";
+import SelectEventsModal from "./SelectEventsModal";
 
 const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
   const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
+  const [showSelectEventsModal, setShowSelectEventsModal] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
+
   const onViewReports = () => {
     navigate("/dashboard/reports");
   };
@@ -41,10 +46,30 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
     setShowPreview(!showPreview);
   };
 
+  // Handler para agregar evento a la sección seleccionada (evita función inline y valida selectedItem)
+  const handleAddEventToSection = () => {
+    if (selectedItem && typeof selectedItem.index === "number") {
+      addEventToSection(selectedItem.index);
+    }
+  };
+
+  // Handler para agregar eventos seleccionados desde SelectEventsModal
+  const handleSelectEvents = (events) => {
+    if (selectedItem && typeof selectedItem.index === "number") {
+      // Agregar los eventos seleccionados a la sección correspondiente
+      const sectionIndex = selectedItem.index;
+      const updatedSections = [...template.sections];
+      updatedSections[sectionIndex].events = [
+        ...(updatedSections[sectionIndex].events || []),
+        ...events,
+      ];
+      updateTemplate("sections", updatedSections);
+    }
+  };
+
   return (
     <DndProvider backend={HTML5Backend}>
       <HeaderActions onViewReports={onViewReports} onCancel={onCancel} />
-
       <div className="flex h-screen bg-gray-50">
         <ComponentPalette
           addSection={addSection}
@@ -82,14 +107,47 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
           />
         )}
 
-        {isModalOpen && (
-          <EventModal
-            eventData={eventData}
-            setEventData={setEventData}
-            setIsModalOpen={setIsModalOpen}
-            addEventToSection={() => addEventToSection(selectedItem.index)}
-          />
+        {isModalOpen &&
+          selectedItem &&
+          typeof selectedItem.index === "number" && (
+            <EventModal
+              eventData={eventData}
+              setEventData={setEventData}
+              setIsModalOpen={setIsModalOpen}
+              addEventToSection={handleAddEventToSection}
+            />
+          )}
+
+        {/* Botones flotantes para agregar sucesos solo si hay sección seleccionada */}
+        {selectedItem && typeof selectedItem.index === "number" && (
+          <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-end">
+            <button
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow"
+              onClick={() => setIsModalOpen(true)}
+              title="Agregar suceso manualmente"
+            >
+              + Agregar Suceso Manual
+            </button>
+            <button
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow"
+              onClick={() => setShowSelectEventsModal(true)}
+              title="Agregar sucesos existentes"
+            >
+              + Agregar Sucesos Existentes
+            </button>
+          </div>
         )}
+
+        {/* Modal para seleccionar eventos existentes */}
+        {showSelectEventsModal &&
+          selectedItem &&
+          typeof selectedItem.index === "number" && (
+            <SelectEventsModal
+              isOpen={showSelectEventsModal}
+              onClose={() => setShowSelectEventsModal(false)}
+              onSelectEvents={handleSelectEvents}
+            />
+          )}
 
         {showPreview && (
           <PreviewPanel template={template} onClose={togglePreview} />
@@ -100,3 +158,5 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
 };
 
 export default TemplateEditor;
+
+/* Tailwind extra: .fab-action { @apply flex items-center gap-2 text-white font-bold py-2 px-4 rounded shadow; } */
