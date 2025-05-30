@@ -48,6 +48,11 @@ const EventModal = ({
     addEventToSection();
   };
 
+  // Handler para cerrar el modal
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div
@@ -58,7 +63,7 @@ const EventModal = ({
         <button
           type="button"
           aria-label="Cerrar"
-          onClick={() => setIsModalOpen(false)}
+          onClick={handleCloseModal}
           className="absolute top-2 right-2 text-gray-400 hover:text-gray-700 text-xl font-bold focus:outline-none"
         >
           &times;
@@ -106,7 +111,7 @@ const EventModal = ({
           <div className="flex justify-end space-x-2">
             <button
               type="button"
-              onClick={() => setIsModalOpen(false)}
+              onClick={handleCloseModal}
               className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
             >
               Cancelar
