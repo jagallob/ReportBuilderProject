@@ -9,6 +9,7 @@ import PreviewPanel from "./TemplateEditorComponents/PreviewPanel";
 import PreviewButton from "./TemplateEditorComponents/PreviewButton";
 import useTemplateManagement from "./TemplateEditorComponents/useTemplateManagement";
 import HeaderActions from "../layouts/HeaderActions";
+import EventModal from "./TemplateEditorComponents/EventModal";
 
 const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
   const navigate = useNavigate();

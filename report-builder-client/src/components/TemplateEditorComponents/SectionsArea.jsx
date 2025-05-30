@@ -73,7 +73,6 @@ const SectionsArea = ({
               handleFileUpload={handleFileUpload}
               updateTemplate={(path, value) => {
                 if (path.includes("${")) {
-                  // Convertir string template a path real
                   const realPath = path
                     .replace("${index}", index)
                     .replace(/\${([^}]*)}/g, (_, variable) => variable);
