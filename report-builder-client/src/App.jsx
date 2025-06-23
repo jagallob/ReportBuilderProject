@@ -3,6 +3,7 @@ import LoginPage from "./pages/LoginPage";
 import PrivateRoute from "./routes/PrivateRoute";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
 import ReportsPage from "./pages/ReportsPage";
+import AdminPanel from "./pages/AdminPanel";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -29,6 +30,13 @@ function App() {
               element={<ReportsPage />}
               allowedRoles={["admin", "manager", "user"]}
             />
+          }
+        />
+
+        <Route
+          path="/admin"
+          element={
+            <PrivateRoute element={<AdminPanel />} allowedRoles={["admin"]} />
           }
         />
       </Routes>
