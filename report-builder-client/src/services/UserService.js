@@ -1,14 +1,14 @@
-const API_URL = "http://localhost:5000";
+import API_BASE_URL from "../environments/api.config";
+import { JSON_HEADERS } from "../environments/http-headers";
+
+const API_URL = `${API_BASE_URL}`;
 
 export const UserService = {
   login: async (email, password) => {
     try {
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json; charset=UTF-8",
-          Accept: "application/json",
-        },
+        headers: JSON_HEADERS,
         body: JSON.stringify({ email, password }),
       });
 

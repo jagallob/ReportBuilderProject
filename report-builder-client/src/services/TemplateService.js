@@ -1,4 +1,7 @@
-const API_URL = "http://localhost:5000/api/Templates";
+import API_BASE_URL from "../environments/api.config";
+import { JSON_HEADERS } from "../environments/http-headers";
+
+const API_URL = `${API_BASE_URL}/api/Templates`;
 
 export const TemplateService = {
   getAllTemplates: async () => {
@@ -20,9 +23,7 @@ export const TemplateService = {
   createTemplate: async (template) => {
     const response = await fetch(API_URL, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: JSON_HEADERS,
       body: JSON.stringify(template),
     });
     if (!response.ok) {
@@ -34,9 +35,7 @@ export const TemplateService = {
   updateTemplate: async (id, template) => {
     const response = await fetch(`${API_URL}/${id}`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: JSON_HEADERS,
       body: JSON.stringify(template),
     });
     if (!response.ok) {
