@@ -21,6 +21,9 @@ appsettings.json
 !appsettings.template.json
 !appsettings.example.json
 
+# Ignorar archivos de entorno del backend
+ReportBuilderAPI/.env
+
 # --- report-builder-client (React - Vite) ---
 report-builder-client/node_modules/
 report-builder-client/dist/
