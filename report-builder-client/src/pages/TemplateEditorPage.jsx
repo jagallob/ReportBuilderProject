@@ -4,6 +4,7 @@ import { TemplateService } from "../services/TemplateService";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import UserService from "../services/UserService";
+import HeaderActions from "../layouts/HeaderActions";
 
 const TemplateEditorPage = () => {
   const { id } = useParams();
@@ -87,11 +88,13 @@ const TemplateEditorPage = () => {
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="pb-6">
+        <HeaderActions onViewReports={goToReports} onCancel={handleLogout} />
+      </div>
       <TemplateEditor
         initialTemplate={template}
         onSave={handleSave}
-        onCancel={handleLogout}
-        onViewReports={goToReports}
+        // onCancel y onViewReports eliminados, ya están en el header global
       />
     </div>
   );

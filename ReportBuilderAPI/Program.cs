@@ -24,7 +24,7 @@ builder.Services.AddDbContext<AppDbContext>(options =>
         Environment.GetEnvironmentVariable("DB_NAME") != null &&
         Environment.GetEnvironmentVariable("DB_USER") != null &&
         Environment.GetEnvironmentVariable("DB_PASSWORD") != null
-            ? $"Host={Environment.GetEnvironmentVariable("DB_HOST")};Database={Environment.GetEnvironmentVariable("DB_NAME")};Username={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASSWORD")}" 
+            ? $"Host={Environment.GetEnvironmentVariable("DB_HOST")};Database={Environment.GetEnvironmentVariable("DB_NAME")};Username={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASSWORD")}"
             : builder.Configuration.GetConnectionString("DefaultConnection")
     )
 );
@@ -141,16 +141,16 @@ builder.Services.Configure<FormOptions>(options =>
 
 var app = builder.Build();
 
-    // Configure the HTTP request pipeline.
-    if (app.Environment.IsDevelopment())
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger(); // Habilitar Swagger
+    app.UseSwaggerUI(options =>
     {
-        app.UseSwagger(); // Habilitar Swagger
-        app.UseSwaggerUI(options =>
-        {
-            options.SwaggerEndpoint("/swagger/v1/swagger.json", "ReportBuilderProject v1");
-            options.RoutePrefix = "swagger"; // Ruta base para la interfaz de Swagger
-        });
-    }
+        options.SwaggerEndpoint("/swagger/v1/swagger.json", "ReportBuilderProject v1");
+        options.RoutePrefix = "swagger"; // Ruta base para la interfaz de Swagger
+    });
+}
 
 
 app.UseHttpsRedirection();

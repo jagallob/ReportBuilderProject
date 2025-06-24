@@ -1,10 +1,25 @@
+import HeaderActions from "../layouts/HeaderActions";
 import { useAuth } from "../context/AuthContext";
+import { useNavigate } from "react-router-dom";
 
 const AdminPanel = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    localStorage.removeItem("token");
+    navigate("/");
+  };
+
+  const goToReports = () => {
+    navigate("/dashboard/reports");
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6">
+      <div className="pb-6">
+        <HeaderActions onViewReports={goToReports} onCancel={handleLogout} />
+      </div>
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-xl">
         <h1 className="text-3xl font-bold text-blue-800 mb-2">
           Consola de Administración
