@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
 import { PlusIcon } from "@heroicons/react/24/outline";
@@ -9,19 +8,13 @@ import ConfigurationPanel from "./TemplateEditorComponents/ConfigurationPanel";
 import PreviewPanel from "./TemplateEditorComponents/PreviewPanel";
 import PreviewButton from "./TemplateEditorComponents/PreviewButton";
 import useTemplateManagement from "./TemplateEditorComponents/useTemplateManagement";
-import HeaderActions from "../layouts/HeaderActions";
 import EventModal from "./TemplateEditorComponents/EventModal";
 import SelectEventsModal from "./SelectEventsModal";
 
 const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
-  const navigate = useNavigate();
   const [showPreview, setShowPreview] = useState(false);
   const [showSelectEventsModal, setShowSelectEventsModal] = useState(false);
-  const [fabOpen, setFabOpen] = useState(false);
 
-  const onViewReports = () => {
-    navigate("/dashboard/reports");
-  };
   const {
     template,
     selectedItem,
@@ -69,7 +62,6 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
 
   return (
     <DndProvider backend={HTML5Backend}>
-      <HeaderActions onViewReports={onViewReports} onCancel={onCancel} />
       <div className="flex h-screen bg-gray-50">
         <ComponentPalette
           addSection={addSection}
