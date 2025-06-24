@@ -10,12 +10,24 @@ using ReportBuilderAPI.Repositories.Interfaces;
 using ReportBuilderAPI.Repositories.Implementations;
 using ReportBuilderAPI.Service.Interface;
 using ReportBuilderAPI.Service.Implementations;
+using Microsoft.Extensions.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Cargar variables de entorno
+builder.Configuration.AddEnvironmentVariables();
+
 // Configurar DbContext
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(
+        Environment.GetEnvironmentVariable("DB_HOST") != null &&
+        Environment.GetEnvironmentVariable("DB_NAME") != null &&
+        Environment.GetEnvironmentVariable("DB_USER") != null &&
+        Environment.GetEnvironmentVariable("DB_PASSWORD") != null
+            ? $"Host={Environment.GetEnvironmentVariable("DB_HOST")};Database={Environment.GetEnvironmentVariable("DB_NAME")};Username={Environment.GetEnvironmentVariable("DB_USER")};Password={Environment.GetEnvironmentVariable("DB_PASSWORD")}" 
+            : builder.Configuration.GetConnectionString("DefaultConnection")
+    )
+);
 
 // Registrar repositorios
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -47,9 +59,11 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["JwtSettings:Issuer"],
-        ValidAudience = builder.Configuration["JwtSettings:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtSettings:SecretKey"]!))
+        ValidIssuer = Environment.GetEnvironmentVariable("JWT_ISSUER") ?? builder.Configuration["JwtSettings:Issuer"],
+        ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["JwtSettings:Audience"],
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
+            Environment.GetEnvironmentVariable("JWT_SECRET") ?? builder.Configuration["JwtSettings:SecretKey"]!
+        ))
     };
 });
 
@@ -147,6 +161,6 @@ app.MapControllers();
 app.UseStaticFiles(); // permite servir archivos como /uploads/*
 
 app.Run();
-  
+
 
 
