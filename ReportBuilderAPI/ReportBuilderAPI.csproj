@@ -22,6 +22,11 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
     <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
     <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+    <PackageReference Include="OpenAI" Version="1.11.0" />
+    <PackageReference Include="Anthropic.SDK" Version="0.1.0" />
+    <PackageReference Include="Pinecone.Client" Version="2.0.0" />
+    <PackageReference Include="Microsoft.Extensions.VectorData" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

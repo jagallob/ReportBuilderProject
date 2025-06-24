@@ -36,6 +36,11 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJWTUtils, JWTUtils>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<ReportBuilderAPI.Services.AI.IAnalyticsService, ReportBuilderAPI.Services.AI.AnalyticsService>();
+builder.Services.AddScoped<ReportBuilderAPI.Services.AI.INarrativeService, ReportBuilderAPI.Services.AI.NarrativeService>();
+builder.Services.AddScoped<ReportBuilderAPI.Services.AI.IMCPClientService, ReportBuilderAPI.Services.AI.MCPClientService>();
+builder.Services.AddScoped<ReportBuilderAPI.Services.Data.IDataProcessingService, ReportBuilderAPI.Services.Data.DataProcessingService>();
+builder.Services.AddScoped<ReportBuilderAPI.Services.Vector.IVectorService, ReportBuilderAPI.Services.Vector.VectorService>();
 
 
 // Agregar controladores
