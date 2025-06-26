@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
+import NarrativeGenerator from "../AI/NarrativeGenerator";
 
 const TextConfig = ({ component, onUpdate, sectionData }) => {
   const [excelColumns, setExcelColumns] = useState([]);
+  const [showNarrativeGenerator, setShowNarrativeGenerator] = useState(false);
 
   useEffect(() => {
     console.log("sectionData recibido:", sectionData);
@@ -24,6 +26,18 @@ const TextConfig = ({ component, onUpdate, sectionData }) => {
   }, [sectionData]);
 
   console.log("Estado actual de excelColumns:", excelColumns);
+
+  // Handler para recibir la narrativa generada y actualizar el contenido
+  const handleNarrativeGenerated = (narrative) => {
+    onUpdate("content", narrative);
+    setShowNarrativeGenerator(false);
+  };
+
+  // Ejemplo de callback para insertar la narrativa en otro campo (como conclusiones)
+  const handleNarrativeForConclusions = (narrative) => {
+    onUpdate("conclusions", narrative); // 'conclusions' sería el campo de conclusiones en tu modelo/component
+    setShowNarrativeGenerator(false);
+  };
 
   return (
     <div className="space-y-4">
@@ -135,13 +149,40 @@ const TextConfig = ({ component, onUpdate, sectionData }) => {
               </p>
             </div>
           )}
+
+          {/* Botón para activar el generador de narrativa */}
+          <div>
+            <button
+              type="button"
+              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 mb-2"
+              onClick={() => setShowNarrativeGenerator((prev) => !prev)}
+            >
+              {showNarrativeGenerator
+                ? "Ocultar generador automático"
+                : "Generar narrativa automática"}
+            </button>
+            {showNarrativeGenerator && (
+              <div className="mt-4 border rounded p-4 bg-blue-50">
+                <NarrativeGenerator
+                  excelData={sectionData?.excelData}
+                  onNarrativeGenerated={handleNarrativeGenerated}
+                />
+                {/*
+                <NarrativeGenerator
+                  excelData={sectionData?.excelData}
+                  onNarrativeGenerated={handleNarrativeForConclusions}
+                />
+                */}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {!component.autoGenerate && (
         <div>
           <label className="block text-sm font-medium mb-1">
-            Contenido manual
+            Contenido manual o generado
           </label>
           <textarea
             value={component.content || ""}
