@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import NarrativeGenerator from "../AI/NarrativeGenerator";
 
-const TextConfig = ({ component, onUpdate, sectionData }) => {
+const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
   const [excelColumns, setExcelColumns] = useState([]);
   const [showNarrativeGenerator, setShowNarrativeGenerator] = useState(false);
 
   useEffect(() => {
+    if (!sectionData || !sectionData.excelData) return;
     console.log("sectionData recibido:", sectionData);
     console.log("Headers de Excel:", sectionData?.excelData?.headers);
 

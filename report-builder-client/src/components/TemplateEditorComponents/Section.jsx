@@ -144,6 +144,7 @@ const Section = ({
               }}
               onMove={moveComponent}
               removeComponent={removeComponent}
+              sectionData={section} // <-- Pass sectionData to Component
             />
           ))}
         </div>
