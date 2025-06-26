@@ -34,12 +34,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     setShowNarrativeGenerator(false);
   };
 
-  // Ejemplo de callback para insertar la narrativa en otro campo (como conclusiones)
-  const handleNarrativeForConclusions = (narrative) => {
-    onUpdate("conclusions", narrative); // 'conclusions' sería el campo de conclusiones en tu modelo/component
-    setShowNarrativeGenerator(false);
-  };
-
   return (
     <div className="space-y-4">
       <div>
