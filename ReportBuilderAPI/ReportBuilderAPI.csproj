@@ -26,7 +26,6 @@
     <PackageReference Include="OpenAI" Version="1.11.0" />
     <PackageReference Include="Anthropic.SDK" Version="0.1.0" />
     <PackageReference Include="Pinecone.Client" Version="2.0.0" />
-    <PackageReference Include="Microsoft.Extensions.VectorData" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>

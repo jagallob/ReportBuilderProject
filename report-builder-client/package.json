@@ -10,27 +10,28 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.17.0",
     "@heroicons/react": "^2.2.0",
     "@types/uuid": "^10.0.0",
     "docx": "^9.4.1",
     "file-saver": "^2.0.5",
     "html2canvas": "^1.4.1",
     "html2pdf.js": "^0.10.3",
+    "lucide-react": "^0.523.0",
+    "openai": "^4.28.0",
+    "prismjs": "^1.29.0",
     "prop-types": "^15.8.1",
     "react": "^19.0.0",
     "react-dnd": "^16.0.1",
     "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^19.0.0",
     "react-hot-toast": "^2.5.2",
+    "react-markdown": "^9.0.0",
     "react-router-dom": "^7.5.2",
     "react-toastify": "^11.0.5",
     "recharts": "^2.10.0",
     "uuid": "^11.1.0",
-    "xlsx": "^0.18.5",
-    "openai": "^4.28.0",
-    "@anthropic-ai/sdk": "^0.17.0",
-    "react-markdown": "^9.0.0",
-    "prismjs": "^1.29.0"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.22.0",
