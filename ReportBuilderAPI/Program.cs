@@ -11,6 +11,15 @@ using ReportBuilderAPI.Repositories.Implementations;
 using ReportBuilderAPI.Service.Interface;
 using ReportBuilderAPI.Service.Implementations;
 using Microsoft.Extensions.Configuration;
+using ReportBuilderAPI.Configuration;
+using ReportBuilderAPI.Services.AI.Interfaces;
+using ReportBuilderAPI.Services.AI.Implementation;
+using ReportBuilderAPI.Services.MCP.Interfaces;
+using ReportBuilderAPI.Services.MCP.Implementation;
+using ReportBuilderAPI.Services.Vector.Interfaces;
+using ReportBuilderAPI.Services.Vector.Implementation;
+using ReportBuilderAPI.Services.Data.Interfaces;
+using ReportBuilderAPI.Services.Data.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -32,16 +41,26 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 // Registrar repositorios
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
+// Configuración AI
+builder.Services.Configure<AIConfiguration>(
+    builder.Configuration.GetSection("AI"));
+
 // Registrar servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJWTUtils, JWTUtils>();
 builder.Services.AddScoped<IUserService, UserService>();
-builder.Services.AddScoped<ReportBuilderAPI.Services.AI.IAnalyticsService, ReportBuilderAPI.Services.AI.AnalyticsService>();
-builder.Services.AddScoped<ReportBuilderAPI.Services.AI.INarrativeService, ReportBuilderAPI.Services.AI.NarrativeService>();
-builder.Services.AddScoped<ReportBuilderAPI.Services.AI.IMCPClientService, ReportBuilderAPI.Services.AI.MCPClientService>();
-builder.Services.AddScoped<ReportBuilderAPI.Services.Data.IDataProcessingService, ReportBuilderAPI.Services.Data.DataProcessingService>();
-builder.Services.AddScoped<ReportBuilderAPI.Services.Vector.IVectorService, ReportBuilderAPI.Services.Vector.VectorService>();
 
+// Registrar servicios AI
+builder.Services.AddScoped<IAnalyticsService, AnalyticsService>();
+builder.Services.AddScoped<INarrativeService, NarrativeService>();
+builder.Services.AddScoped<IDataProcessingService, DataProcessingService>();
+
+// Registrar servicios Vector
+builder.Services.AddSingleton<IVectorService, VectorService>();
+
+// Registrar servicios MCP
+builder.Services.AddHttpClient<IMCPClientService, MCPClientService>();
+builder.Services.AddScoped<IMCPClientService, MCPClientService>();
 
 // Agregar controladores
 builder.Services.AddControllers()
@@ -145,6 +164,16 @@ builder.Services.Configure<FormOptions>(options =>
 });
 
 var app = builder.Build();
+
+// Inicializar servicios AI
+using (var scope = app.Services.CreateScope())
+{
+    var vectorService = scope.ServiceProvider.GetRequiredService<IVectorService>();
+    await vectorService.InitializeAsync();
+
+    var mcpService = scope.ServiceProvider.GetRequiredService<IMCPClientService>();
+    await mcpService.InitializeAsync();
+}
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
