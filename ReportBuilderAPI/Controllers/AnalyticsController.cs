@@ -17,7 +17,7 @@ namespace ReportBuilderAPI.Controllers
             _logger = logger;
         }
 
-        [HttpPost("analyze-excel")]
+        [HttpPost("analyze")]
         public async Task<ActionResult<AnalysisResult>> AnalyzeExcel([FromBody] AnalysisRequest request)
         {
             try

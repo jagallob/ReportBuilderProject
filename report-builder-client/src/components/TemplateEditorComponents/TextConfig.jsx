@@ -7,13 +7,13 @@ import {
   EyeIcon,
   CogIcon,
 } from "@heroicons/react/24/outline";
-import NarrativeGenerator from "../AI/NarrativeGenerator";
-import AIDataAnalyzer from "../AI/AIDataAnalyzer";
+import { analyzeExcelData } from "../../services/analysisService";
+import { generateNarrativeFromAnalysis } from "../../services/narrativeService";
 
 const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
   const [excelColumns, setExcelColumns] = useState([]);
-  const [showNarrativeGenerator, setShowNarrativeGenerator] = useState(false);
-  const [showAIAnalyzer, setShowAIAnalyzer] = useState(false);
+  const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
+  const [error, setError] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
   const [aiConfig, setAiConfig] = useState({
@@ -50,60 +50,101 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     }
   }, [sectionData]);
 
-  // Handler para recibir la narrativa generada y actualizar el contenido
-  const handleNarrativeGenerated = (narrative) => {
-    onUpdate("content", narrative);
-    setShowNarrativeGenerator(false);
+  // Nuevo useEffect para disparar el análisis automático con AI
+  useEffect(() => {
+    // Se activa si la opción está marcada, hay datos, no se está analizando ya y no hay resultados previos.
+    if (
+      component.autoAnalyzeAI &&
+      hasDataForAnalysis() &&
+      !isAnalyzing &&
+      !analysisResults
+    ) {
+      console.log("Activado análisis automático con AI...");
+      handleAIAnalysis();
+    }
+    // Las dependencias aseguran que se ejecute solo cuando cambien los datos o la configuración de auto-análisis.
+  }, [sectionData, component.autoAnalyzeAI, isAnalyzing, analysisResults]);
+
+  // 1. Refactorización: Un solo manejador para todos los cambios en aiConfig
+  const handleAiConfigChange = (e) => {
+    const { name, value, type, checked } = e.target;
+    setAiConfig((prevConfig) => ({
+      ...prevConfig,
+      [name]: type === "checkbox" ? checked : value,
+    }));
   };
 
-  // Handler para análisis completo con AI
+  //Refactorizamos el manejador de análisis para orquestar los servicios
   const handleAIAnalysis = async () => {
     setIsAnalyzing(true);
+    setError(null);
+    setAnalysisResults(null);
+
     try {
-      // Preparar datos para enviar a la AI
-      const dataToAnalyze = {
-        excelData: sectionData?.excelData,
-        powerBIData: sectionData?.powerBIData,
-        apiData: sectionData?.apiData,
-        selectedColumns: component.analysisConfig?.dataColumn
-          ? [component.analysisConfig.dataColumn]
-          : [],
-        categoryColumn: component.analysisConfig?.categoryColumn,
-        analysisConfig: aiConfig,
-      };
-
-      // Llamar al servicio de AI
-      const response = await fetch("/api/ai/analyze-data", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          data: dataToAnalyze,
-          config: aiConfig,
-          requestedOutputs: {
-            narrative: aiConfig.includeNarrative,
-            charts: aiConfig.includeCharts,
-            kpis: aiConfig.includeKPIs,
-            trends: aiConfig.includeTrends,
-          },
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      const dataToAnalyze = sectionData?.excelData;
+      if (
+        !dataToAnalyze ||
+        !dataToAnalyze.data ||
+        dataToAnalyze.data.length === 0
+      ) {
+        throw new Error("No hay datos de Excel disponibles para el análisis.");
       }
 
-      const analysisResult = await response.json();
-      setAnalysisResults(analysisResult);
+      // Paso 1: Llamar al servicio de análisis. Este es el análisis base.
+      console.log("Iniciando análisis de datos...");
+      // Pasamos tanto los datos como la configuración de AI al servicio
+      const baseAnalysis = await analyzeExcelData(dataToAnalyze.data, aiConfig);
+      console.log("Análisis base recibido:", baseAnalysis);
+
+      // Preparamos el objeto de resultados finales
+      const finalResults = {
+        narrative: null,
+        // El modelo AnalysisResult no tiene 'charts', lo inicializamos vacío.
+        // Si quieres esta funcionalidad, debes añadir la propiedad 'Charts' a la clase AnalysisResult en C#.
+        charts: baseAnalysis.charts || [],
+        // CORRECCIÓN: Mapeamos desde 'metrics' (backend) en lugar de 'keyMetrics' (frontend)
+        kpis: baseAnalysis.metrics
+          ? Object.entries(baseAnalysis.metrics).map(([key, value]) => ({
+              name: key,
+              value: String(value), // Convertimos a string para una visualización segura
+            }))
+          : [],
+        // CORRECCIÓN: Mapeamos la descripción de cada objeto 'trend' para mostrarla
+        trends:
+          baseAnalysis.trends?.map(
+            (t) => `${t.metric} tiene una tendencia ${t.direction}`
+          ) || [],
+        // CORRECCIÓN: Mapeamos la descripción de cada 'insight' como una sugerencia
+        suggestions: baseAnalysis.insights?.map((i) => i.description) || [],
+        confidence: baseAnalysis.insights?.[0]?.confidence || 0.8, // Usamos la confianza del primer insight como referencia
+      };
+
+      // Paso 2: Si se solicita una narrativa, llamar al servicio de narrativa
+      if (aiConfig.includeNarrative) {
+        console.log("Generando narrativa a partir del análisis...");
+        // Pasamos el resultado del análisis anterior para generar el texto
+        const narrativeResult = await generateNarrativeFromAnalysis(
+          // 2. CORRECCIÓN: Pasamos aiConfig para que se use el idioma y tono correctos
+          baseAnalysis,
+          aiConfig
+        );
+        finalResults.narrative = narrativeResult.narrative;
+        console.log("Narrativa generada:", narrativeResult.narrative);
+      }
+
+      // (Aquí se podrían añadir llamadas a otros servicios para tendencias, etc., si fuera necesario)
+
+      setAnalysisResults(finalResults);
 
       // Aplicar resultados automáticamente si está configurado
-      if (component.autoApplyAIResults) {
-        applyAIResults(analysisResult);
+      // Si el análisis se disparó automáticamente, aplicamos los resultados también automáticamente.
+      if (component.autoAnalyzeAI) {
+        applyAIResults(finalResults);
+        console.log("Resultados de AI aplicados automáticamente.");
       }
     } catch (error) {
       console.error("Error en análisis AI:", error);
-      alert("Error al analizar datos con AI. Por favor, intenta nuevamente.");
+      setError(error.message);
     } finally {
       setIsAnalyzing(false);
     }
@@ -115,11 +156,11 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
       onUpdate("content", results.narrative);
     }
 
-    if (results.charts && results.charts.length > 0) {
+    if (results.charts?.length > 0) {
       onUpdate("generatedCharts", results.charts);
     }
 
-    if (results.kpis && results.kpis.length > 0) {
+    if (results.kpis?.length > 0) {
       onUpdate("generatedKPIs", results.kpis);
     }
 
@@ -179,6 +220,19 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           gráficos, KPIs y tendencias.
         </p>
 
+        {/* Checkbox para controlar el análisis automático */}
+        <div className="mb-4">
+          <label className="flex items-center text-sm text-gray-600 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={component.autoAnalyzeAI || false}
+              onChange={(e) => onUpdate("autoAnalyzeAI", e.target.checked)}
+              className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+            />
+            Analizar automáticamente con AI al cargar nuevos datos
+          </label>
+        </div>
+
         {/* Configuración de AI */}
         <div className="space-y-3 mb-4">
           <div className="grid grid-cols-2 gap-3">
@@ -187,10 +241,9 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                 Tipo de análisis
               </label>
               <select
+                name="analysisType"
                 value={aiConfig.analysisType}
-                onChange={(e) =>
-                  setAiConfig({ ...aiConfig, analysisType: e.target.value })
-                }
+                onChange={handleAiConfigChange}
                 className="w-full p-2 border rounded text-sm"
               >
                 <option value="comprehensive">Análisis Completo</option>
@@ -204,10 +257,9 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
             <div>
               <label className="block text-sm font-medium mb-1">Idioma</label>
               <select
+                name="language"
                 value={aiConfig.language}
-                onChange={(e) =>
-                  setAiConfig({ ...aiConfig, language: e.target.value })
-                }
+                onChange={handleAiConfigChange}
                 className="w-full p-2 border rounded text-sm"
               >
                 <option value="es">Español</option>
@@ -219,14 +271,10 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           <div className="flex flex-wrap gap-2">
             <label className="flex items-center text-sm">
               <input
+                name="includeNarrative"
                 type="checkbox"
                 checked={aiConfig.includeNarrative}
-                onChange={(e) =>
-                  setAiConfig({
-                    ...aiConfig,
-                    includeNarrative: e.target.checked,
-                  })
-                }
+                onChange={handleAiConfigChange}
                 className="mr-2"
               />
               <DocumentTextIcon className="h-4 w-4 mr-1" />
@@ -235,11 +283,10 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
             <label className="flex items-center text-sm">
               <input
+                name="includeCharts"
                 type="checkbox"
                 checked={aiConfig.includeCharts}
-                onChange={(e) =>
-                  setAiConfig({ ...aiConfig, includeCharts: e.target.checked })
-                }
+                onChange={handleAiConfigChange}
                 className="mr-2"
               />
               <ChartBarIcon className="h-4 w-4 mr-1" />
@@ -248,11 +295,10 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
             <label className="flex items-center text-sm">
               <input
+                name="includeKPIs"
                 type="checkbox"
                 checked={aiConfig.includeKPIs}
-                onChange={(e) =>
-                  setAiConfig({ ...aiConfig, includeKPIs: e.target.checked })
-                }
+                onChange={handleAiConfigChange}
                 className="mr-2"
               />
               <EyeIcon className="h-4 w-4 mr-1" />
@@ -261,11 +307,10 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
             <label className="flex items-center text-sm">
               <input
+                name="includeTrends"
                 type="checkbox"
                 checked={aiConfig.includeTrends}
-                onChange={(e) =>
-                  setAiConfig({ ...aiConfig, includeTrends: e.target.checked })
-                }
+                onChange={handleAiConfigChange}
                 className="mr-2"
               />
               <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
@@ -297,13 +342,19 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
           <button
             type="button"
-            onClick={() => setShowAIAnalyzer(!showAIAnalyzer)}
+            onClick={() => setShowAdvancedConfig(!showAdvancedConfig)}
             className="px-3 py-2 border border-gray-300 rounded hover:bg-gray-50"
             title="Configuración avanzada"
           >
             <CogIcon className="h-4 w-4" />
           </button>
         </div>
+
+        {error && (
+          <p className="text-sm text-red-600 mt-2 bg-red-50 p-2 rounded">
+            <strong>Error:</strong> {error}
+          </p>
+        )}
 
         {!hasDataForAnalysis() && (
           <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded">
@@ -313,7 +364,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         )}
       </div>
 
-      {/* Resultados del análisis AI */}
+      {/* 3. La UI para mostrar resultados se mantiene, ahora alimentada por el nuevo flujo */}
       {analysisResults && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
           <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
@@ -413,7 +464,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                   </button>
                 </div>
                 <p className="text-sm text-gray-700">
-                  {analysisResults.trends.summary}
+                  {analysisResults.trends.join(", ")}
                 </p>
               </div>
             )}
@@ -435,7 +486,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         </div>
       )}
 
-      {/* Configuración tradicional */}
+      {/* 4. Eliminamos la sección que renderizaba el NarrativeGenerator tradicional */}
       <div className="border-t pt-4">
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -545,27 +596,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                 </p>
               </div>
             )}
-
-            {/* Botón para generador tradicional */}
-            <div>
-              <button
-                type="button"
-                className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 mb-2"
-                onClick={() => setShowNarrativeGenerator((prev) => !prev)}
-              >
-                {showNarrativeGenerator
-                  ? "Ocultar generador tradicional"
-                  : "Generar narrativa tradicional"}
-              </button>
-              {showNarrativeGenerator && (
-                <div className="mt-4 border rounded p-4 bg-gray-50">
-                  <NarrativeGenerator
-                    excelData={sectionData?.excelData}
-                    onNarrativeGenerated={handleNarrativeGenerated}
-                  />
-                </div>
-              )}
-            </div>
           </div>
         )}
 

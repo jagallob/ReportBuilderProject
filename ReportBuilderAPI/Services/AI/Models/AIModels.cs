@@ -1,12 +1,39 @@
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
 namespace ReportBuilderAPI.Services.AI.Models
 {
-    public class AnalysisRequest
+    /// <summary>
+    /// Representa las opciones de configuración para una solicitud de análisis de IA.
+    /// </summary>
+    public class AIRequestConfig
     {
-        public int ReportId { get; set; }
-        public Dictionary<string, object> Data { get; set; } = new();
+        [JsonPropertyName("analysisType")]
         public string AnalysisType { get; set; } = string.Empty;
-        public DateTime PeriodStart { get; set; }
-        public DateTime PeriodEnd { get; set; }
+
+        [JsonPropertyName("includeCharts")]
+        public bool IncludeCharts { get; set; }
+
+        [JsonPropertyName("includeKPIs")]
+        public bool IncludeKPIs { get; set; }
+
+        [JsonPropertyName("includeTrends")]
+        public bool IncludeTrends { get; set; }
+
+        [JsonPropertyName("includeNarrative")]
+        public bool IncludeNarrative { get; set; }
+
+        [JsonPropertyName("chartTypes")]
+        public List<string> ChartTypes { get; set; } = new();
+
+        [JsonPropertyName("kpiTypes")]
+        public List<string> KpiTypes { get; set; } = new();
+
+        [JsonPropertyName("language")]
+        public string Language { get; set; } = string.Empty;
+
+        [JsonPropertyName("tone")]
+        public string Tone { get; set; } = string.Empty;
     }
 
     public class AnalysisResult
@@ -43,15 +70,6 @@ namespace ReportBuilderAPI.Services.AI.Models
         public DateTime Date { get; set; }
         public double Value { get; set; }
         public string Label { get; set; } = string.Empty;
-    }
-
-    public class NarrativeRequest
-    {
-        public int TemplateId { get; set; }
-        public Dictionary<string, object> Data { get; set; } = new();
-        public string Context { get; set; } = string.Empty;
-        public string Style { get; set; } = "Professional";
-        public string Language { get; set; } = "es";
     }
 
     public class NarrativeResult
