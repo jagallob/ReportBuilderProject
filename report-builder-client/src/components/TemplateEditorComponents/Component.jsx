@@ -15,6 +15,7 @@ const Component = ({
   onMove,
   removeComponent,
   excelData,
+  sectionData, // <-- Accept sectionData as prop
 }) => {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "COMPONENT",
@@ -64,7 +65,13 @@ const Component = ({
   const renderConfig = () => {
     switch (component.type) {
       case "text":
-        return <TextConfig component={component} onUpdate={onUpdate} />;
+        return (
+          <TextConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData}
+          />
+        );
       case "table":
         return <TableConfig component={component} onUpdate={onUpdate} />;
       case "chart":

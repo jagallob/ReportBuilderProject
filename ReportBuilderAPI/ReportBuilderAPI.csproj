@@ -1,33 +1,90 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net9.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework> <!-- Puedes cambiar a net8.0 si prefieres más estabilidad -->
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
 
+  <!-- 🚧 Web, Seguridad, ORM y Base de Datos -->
   <ItemGroup>
-    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
-    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
-    <PackageReference Include="ClosedXML" Version="0.104.2" />
+    <!-- Autenticación con JWT -->
+    <PackageReference Include="Azure.AI.OpenAI" Version="1.0.0-beta.17" />
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.4" />
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.0.1" />
+
+    <!-- Soporte para EF Core -->
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.4" />
+    
+    <!-- Compatibilidad con SQL Server -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="9.0.4" />
+    
+    <!-- Compatibilidad con PostgreSQL -->
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
+
+    <!-- Herramientas de EF para Migrations, Scaffold, etc -->
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.4">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4" />
-    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
-    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
-    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
-    <PackageReference Include="OpenAI" Version="1.11.0" />
-    <PackageReference Include="Anthropic.SDK" Version="0.1.0" />
-    <PackageReference Include="Pinecone.Client" Version="2.0.0" />
+
+    <!-- Para hash seguro de contraseñas -->
+    <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
   </ItemGroup>
 
+  <!-- 🤖 Inteligencia Artificial y Modelos -->
+  <ItemGroup>
+    <!-- Machine Learning de Microsoft (ML.NET) -->
+    <PackageReference Include="Microsoft.ML" Version="3.0.1" />
+
+    <!-- Acceso a la API de Anthropic (Claude) -->
+    <PackageReference Include="Anthropic.SDK" Version="1.0.0" /> <!-- Solo si planeas usar Claude -->
+
+    <!-- Cliente para Pinecone (vector DB para embeddings) -->
+    <PackageReference Include="Pinecone.Client" Version="2.0.0" /> <!-- Útil si usarás búsqueda semántica -->
+
+    <!-- Semantic Kernel (Microsoft, agentes e IA compuesta) -->
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.4.0" /> <!-- Muy útil para flujos IA personalizados -->
+
+    <!-- Abstracción para búsquedas vectoriales (nuevo stack de Microsoft) -->
+    <PackageReference Include="Microsoft.Extensions.VectorData.Abstractions" Version="9.5.0" />
+  </ItemGroup>
+
+  <!-- 📦 Utilidades de serialización, HTTP y cache -->
+  <ItemGroup>
+    <!-- Serialización flexible y amplia compatibilidad -->
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" /> <!-- Si ya tienes legacy con Newtonsoft -->
+
+    <!-- Serializador moderno de .NET (recomendado si partes de cero) -->
+    <PackageReference Include="System.Text.Json" Version="9.0.4" />
+
+    <!-- Logging estructurado con Serilog -->
+    <PackageReference Include="Serilog.AspNetCore" Version="9.0.0" />
+
+    <!-- Soporte para HTTP clients con políticas (reintentos, timeout) -->
+    <PackageReference Include="Microsoft.Extensions.Http" Version="9.0.4" />
+
+    <!-- Cache en memoria, útil para performance -->
+    <PackageReference Include="Microsoft.Extensions.Caching.Memory" Version="9.0.4" />
+  </ItemGroup>
+
+  <!-- 📚 Documentación y Swagger -->
+  <ItemGroup>
+    <!-- Genera documentación automática de tu API -->
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.1.1" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="9.0.2" />
+  </ItemGroup>
+
+  <!-- 🔧 Utilidades varias -->
+  <ItemGroup>
+    <!-- Manejo de archivos Excel -->
+    <PackageReference Include="ClosedXML" Version="0.104.2" />
+
+    <!-- Mapeo entre DTOs y entidades -->
+    <PackageReference Include="AutoMapper.Extensions.Microsoft.DependencyInjection" Version="12.0.1" />
+  </ItemGroup>
+
+  <!-- 🗂️ Carpetas organizativas -->
   <ItemGroup>
     <Folder Include="Utils\" />
     <Folder Include="Repositories\" />
