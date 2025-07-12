@@ -1,43 +1,52 @@
 # ReportBuilderProject
 
-## Descripción General
-
-**ReportBuilderProject** es una solución integral para la gestión, edición y consolidación de informes periódicos en organizaciones. El sistema está compuesto por:
-
-- **Frontend:** Aplicación web moderna desarrollada en React + Vite + Tailwind CSS.
-- **Backend:** API RESTful construida en .NET 7, con autenticación JWT, manejo de usuarios, plantillas, reportes y cargas de archivos Excel.
+**ReportBuilderProject** es una solución integral para la gestión y consolidación de informes, potenciada con Inteligencia Artificial para generar análisis, narrativas y búsquedas semánticas de forma automática.
 
 ---
 
 ## Tabla de Contenidos
 
-- [Características](#características)
-- [Arquitectura](#arquitectura)
-- [Instalación](#instalación)
-  - [Backend (.NET API)](#backend-net-api)
-  - [Frontend (React)](#frontend-react)
-- [Configuración](#configuración)
-- [Uso](#uso)
-- [Estructura de Carpetas](#estructura-de-carpetas)
-- [Dependencias Principales](#dependencias-principales)
-- [Notas de Seguridad](#notas-de-seguridad)
-- [Licencia](#licencia)
+- [🚀 Características](#-características)
+- [🛠️ Stack Tecnológico](#️-stack-tecnológico)
+- [🏛️ Arquitectura](#️-arquitectura)
+- [🏁 Cómo Empezar](#-cómo-empezar)
+- [📖 Uso de la API](#-uso-de-la-api)
+- [🤝 Cómo Contribuir](#-cómo-contribuir)
+- [📝 Licencia](#-licencia)
 
 ---
 
-## Características
+## 🚀 Características
 
-- **Gestión de usuarios y autenticación JWT**
-- **Editor visual de plantillas de informes**
-- **Carga y procesamiento de archivos Excel**
-- **Generación y descarga de reportes en PDF/Word**
-- **Panel de administración y seguimiento de envíos**
-- **Consolidación automática de reportes**
-- **Notificaciones y feedback visual**
+### Funcionalidades Principales
+
+- **Gestión de Usuarios y Autenticación**: Sistema seguro de roles y permisos con JWT.
+- **Carga y Procesamiento de Datos**: Soporte nativo para ingesta de datos desde archivos Excel.
+- **Generación de Reportes**: Creación de reportes consolidados listos para descargar.
+- **Panel de Administración**: Interfaz centralizada para el seguimiento y gestión de informes.
+
+### Capacidades de Inteligencia Artificial
+
+- **Análisis de Datos Automático**: Genera insights, tendencias y resúmenes ejecutivos a partir de los datos cargados.
+- **Generación de Narrativas**: Crea textos coherentes y profesionales para las secciones de los reportes.
+- **Búsqueda Semántica**: Permite buscar información dentro de los reportes por significado, no solo por palabras clave.
 
 ---
 
-## Arquitectura
+## 🛠️ Stack Tecnológico
+
+| Área                  | Tecnología / Librería                              |
+| --------------------- | -------------------------------------------------- |
+| **Frontend**          | React 19, Vite, Tailwind CSS, Recharts             |
+| **Backend**           | ASP.NET Core 9.0                                   |
+| **Inteligencia IA**   | `Azure.AI.OpenAI` (GPT-4o, text-embedding-3-small) |
+| **Base de Datos**     | Entity Framework Core con PostgreSQL               |
+| **Autenticación**     | JWT Bearer Tokens                                  |
+| **Documentación API** | Swashbuckle (Swagger)                              |
+
+---
+
+## 🏛️ Arquitectura
 
 ```
 [Usuario] <-- navegador --> [React + Vite + Tailwind] <---> [API REST .NET] <---> [PostgreSQL]
@@ -50,39 +59,46 @@
 ### Backend (.NET API)
 
 1. **Requisitos:**
+
    - .NET 7 SDK
    - PostgreSQL
 
 2. **Configuración:**
+
    - Copia `appsettings.json` y ajusta la cadena de conexión y claves JWT según tu entorno.
 
 3. **Migraciones y base de datos:**
+
    ```bash
    dotnet ef database update
    ```
 
 4. **Ejecutar la API:**
+
    ```bash
    dotnet run --project ReportBuilderAPI
    ```
 
-   La API estará disponible en `https://localhost:5001` o el puerto configurado.
+   La API estará disponible en `https://localhost:5000` o el puerto configurado.
 
 ---
 
 ### Frontend (React)
 
 1. **Requisitos:**
+
    - Node.js >= 18
    - npm
 
 2. **Instalación de dependencias:**
+
    ```bash
    cd report-builder-client
    npm install
    ```
 
 3. **Ejecutar en modo desarrollo:**
+
    ```bash
    npm run dev
    ```
