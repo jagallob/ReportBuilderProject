@@ -191,11 +191,15 @@ const useTemplateManagement = (initialTemplate) => {
 
         // Procesamos los datos para un formato más útil
         const headers = jsonData[0] || [];
-        const rows = jsonData.slice(1);
+        // CORRECCIÓN: Filtrar filas vacías que XLSX a veces incluye.
+        // Una fila se considera vacía si todas sus celdas están vacías o son nulas.
+        const rows = jsonData
+          .slice(1)
+          .filter((row) => row.some((cell) => cell != null && cell !== ""));
 
         const processedData = {
           headers,
-          data: rows, // CORRECCIÓN: Renombrar 'rows' a 'data' para consistencia con TextConfig
+          data: rows,
           rawData: jsonData, // Mantenemos rawData por si es útil en otro lugar
         };
 
