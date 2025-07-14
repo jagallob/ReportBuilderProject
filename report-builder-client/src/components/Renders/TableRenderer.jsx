@@ -5,7 +5,7 @@ export const TableRenderer = ({ component, excelData }) => {
     excelData ||
     (component.dataSource?.sourceType === "excel" && component.excelData);
 
-  if (!data?.headers || !data.rows) {
+  if (!data?.headers || !data.data) {
     return <div className="p-4 text-gray-500">No hay datos disponibles</div>;
   }
 
@@ -26,7 +26,7 @@ export const TableRenderer = ({ component, excelData }) => {
           </tr>
         </thead>
         <tbody>
-          {data.rows.map((row, rowIndex) => (
+          {data.data.map((row, rowIndex) => (
             <tr
               key={rowIndex}
               className={rowIndex % 2 === 0 ? "bg-white" : "bg-gray-50"}

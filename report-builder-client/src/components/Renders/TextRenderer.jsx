@@ -15,8 +15,8 @@ export const TextRenderer = ({ component, excelData }) => {
     const shouldGenerate =
       component.autoGenerate &&
       excelData &&
-      excelData.rows &&
-      excelData.rows.length > 0 &&
+      excelData.data &&
+      excelData.data.length > 0 &&
       component.analysisConfig;
 
     let generatedContent = "";

@@ -11,7 +11,7 @@ const ComponentRenderer = ({ component, excelData }) => {
 
   switch (component.type) {
     case "text":
-      return <TextRenderer component={component} />;
+      return <TextRenderer component={component} excelData={excelData} />;
     case "table":
       return <TableRenderer component={component} excelData={excelData} />;
     case "chart":
