@@ -1,23 +1,18 @@
 /**
- * Envía los datos del Excel y la configuración de AI al backend para su análisis.
- * @param {Array<Object>} data - Los datos extraídos del archivo Excel en formato JSON.
- * @param {Object} config - El objeto de configuración de AI desde TextConfig.
+ * Envía un objeto de solicitud de análisis al backend.
+ * @param {Object} requestPayload - El objeto que contiene los datos y la configuración. Debe coincidir con el DTO `AnalysisRequest` del backend.
  * @returns {Promise<object>} - Una promesa que resuelve con el resultado del análisis estructurado.
  */
-export const analyzeExcelData = async (data, config) => {
-  // El cuerpo de la solicitud debe coincidir con lo que espera tu `AnalysisRequest` en C#
-  const requestBody = {
-    data: data,
-    config: config,
-  };
-
+export const analyzeExcelData = async (requestPayload) => {
   try {
     const response = await fetch("/api/analytics/analyze", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        // Si tu API requiere autenticación, aquí es donde añadirías el token:
+        // 'Authorization': `Bearer ${localStorage.getItem('token')}`
       },
-      body: JSON.stringify(requestBody),
+      body: JSON.stringify(requestPayload),
     });
 
     if (!response.ok) {

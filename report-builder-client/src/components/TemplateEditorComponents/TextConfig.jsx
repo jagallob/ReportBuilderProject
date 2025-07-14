@@ -9,6 +9,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { analyzeExcelData } from "../../services/analysisService";
 import { generateNarrativeFromAnalysis } from "../../services/narrativeService";
+import AIConfigPanel from "../AI/AIConfigPanel";
 
 const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
   const [excelColumns, setExcelColumns] = useState([]);
@@ -29,9 +30,20 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
   });
 
   useEffect(() => {
-    if (!sectionData || !sectionData.excelData) return;
+    if (!sectionData || !sectionData.excelData) {
+      console.log(
+        "useEffect: No se encontró sectionData o sectionData.excelData."
+      );
+      setExcelColumns([]); // Limpiar columnas si no hay datos
+      return;
+    }
 
     console.log("sectionData recibido:", sectionData);
+    console.log("Datos de Excel (data array):", sectionData?.excelData?.data);
+    console.log(
+      "Número de filas de datos:",
+      sectionData?.excelData?.data?.length
+    );
     console.log("Headers de Excel:", sectionData?.excelData?.headers);
 
     if (
@@ -48,7 +60,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         sectionData: sectionData,
       });
     }
-  }, [sectionData]);
+  }, [sectionData]); // La dependencia es correcta
 
   // Nuevo useEffect para disparar el análisis automático con AI
   useEffect(() => {
@@ -64,15 +76,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     }
     // Las dependencias aseguran que se ejecute solo cuando cambien los datos o la configuración de auto-análisis.
   }, [sectionData, component.autoAnalyzeAI, isAnalyzing, analysisResults]);
-
-  // 1. Refactorización: Un solo manejador para todos los cambios en aiConfig
-  const handleAiConfigChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setAiConfig((prevConfig) => ({
-      ...prevConfig,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-  };
 
   //Refactorizamos el manejador de análisis para orquestar los servicios
   const handleAIAnalysis = async () => {
@@ -92,8 +95,15 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
       // Paso 1: Llamar al servicio de análisis. Este es el análisis base.
       console.log("Iniciando análisis de datos...");
-      // Pasamos tanto los datos como la configuración de AI al servicio
-      const baseAnalysis = await analyzeExcelData(dataToAnalyze.data, aiConfig);
+
+      // CORRECCIÓN: Creamos un único objeto de solicitud que coincida con el DTO del backend.
+      // Esto hace que el "contrato" entre frontend y backend sea explícito y claro.
+      const requestPayload = {
+        Data: dataToAnalyze.data,
+        Config: aiConfig,
+      };
+
+      const baseAnalysis = await analyzeExcelData(requestPayload);
       console.log("Análisis base recibido:", baseAnalysis);
 
       // Preparamos el objeto de resultados finales
@@ -220,7 +230,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           gráficos, KPIs y tendencias.
         </p>
 
-        {/* Checkbox para controlar el análisis automático */}
+        {/* Checkbox para controlar el análisis automático
         <div className="mb-4">
           <label className="flex items-center text-sm text-gray-600 cursor-pointer">
             <input
@@ -231,92 +241,15 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
             />
             Analizar automáticamente con AI al cargar nuevos datos
           </label>
-        </div>
+        </div> */}
 
-        {/* Configuración de AI */}
-        <div className="space-y-3 mb-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                Tipo de análisis
-              </label>
-              <select
-                name="analysisType"
-                value={aiConfig.analysisType}
-                onChange={handleAiConfigChange}
-                className="w-full p-2 border rounded text-sm"
-              >
-                <option value="comprehensive">Análisis Completo</option>
-                <option value="narrative">Solo Narrativa</option>
-                <option value="charts">Solo Gráficos</option>
-                <option value="kpis">Solo KPIs</option>
-                <option value="trends">Solo Tendencias</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-1">Idioma</label>
-              <select
-                name="language"
-                value={aiConfig.language}
-                onChange={handleAiConfigChange}
-                className="w-full p-2 border rounded text-sm"
-              >
-                <option value="es">Español</option>
-                <option value="en">English</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            <label className="flex items-center text-sm">
-              <input
-                name="includeNarrative"
-                type="checkbox"
-                checked={aiConfig.includeNarrative}
-                onChange={handleAiConfigChange}
-                className="mr-2"
-              />
-              <DocumentTextIcon className="h-4 w-4 mr-1" />
-              Narrativa
-            </label>
-
-            <label className="flex items-center text-sm">
-              <input
-                name="includeCharts"
-                type="checkbox"
-                checked={aiConfig.includeCharts}
-                onChange={handleAiConfigChange}
-                className="mr-2"
-              />
-              <ChartBarIcon className="h-4 w-4 mr-1" />
-              Gráficos
-            </label>
-
-            <label className="flex items-center text-sm">
-              <input
-                name="includeKPIs"
-                type="checkbox"
-                checked={aiConfig.includeKPIs}
-                onChange={handleAiConfigChange}
-                className="mr-2"
-              />
-              <EyeIcon className="h-4 w-4 mr-1" />
-              KPIs
-            </label>
-
-            <label className="flex items-center text-sm">
-              <input
-                name="includeTrends"
-                type="checkbox"
-                checked={aiConfig.includeTrends}
-                onChange={handleAiConfigChange}
-                className="mr-2"
-              />
-              <ArrowTrendingUpIcon className="h-4 w-4 mr-1" />
-              Tendencias
-            </label>
-          </div>
+        {/* Panel de Configuración de AI reutilizado */}
+        <div className="mb-4">
+          <AIConfigPanel
+            config={aiConfig}
+            onConfigChange={setAiConfig}
+            hasData={hasDataForAnalysis()}
+          />
         </div>
 
         {/* Botón principal de análisis AI */}
@@ -353,13 +286,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         {error && (
           <p className="text-sm text-red-600 mt-2 bg-red-50 p-2 rounded">
             <strong>Error:</strong> {error}
-          </p>
-        )}
-
-        {!hasDataForAnalysis() && (
-          <p className="text-sm text-amber-600 mt-2 bg-amber-50 p-2 rounded">
-            ⚠️ No hay datos cargados. Sube un archivo Excel, conecta PowerBI o
-            configura una API primero.
           </p>
         )}
       </div>

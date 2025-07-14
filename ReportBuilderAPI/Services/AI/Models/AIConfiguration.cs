@@ -9,7 +9,7 @@ namespace ReportBuilderAPI.Services.AI.Models
     public class AIConfiguration
     {
         [JsonPropertyName("analysisType")]
-        public string AnalysisType { get; set; } = string.Empty;
+        public string AnalysisType { get; set; }
 
         [JsonPropertyName("includeCharts")]
         public bool IncludeCharts { get; set; }
@@ -24,15 +24,15 @@ namespace ReportBuilderAPI.Services.AI.Models
         public bool IncludeNarrative { get; set; }
 
         [JsonPropertyName("chartTypes")]
-        public List<string> ChartTypes { get; set; } = new();
+        public List<string> ChartTypes { get; set; }
 
         [JsonPropertyName("kpiTypes")]
-        public List<string> KpiTypes { get; set; } = new();
+        public List<string> KpiTypes { get; set; }
 
         [JsonPropertyName("language")]
-        public string Language { get; set; } = string.Empty;
+        public string Language { get; set; }
 
         [JsonPropertyName("tone")]
-        public string Tone { get; set; } = string.Empty;
+        public string Tone { get; set; }
     }
 }

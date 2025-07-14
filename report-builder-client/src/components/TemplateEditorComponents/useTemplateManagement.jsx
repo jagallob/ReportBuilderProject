@@ -195,43 +195,50 @@ const useTemplateManagement = (initialTemplate) => {
 
         const processedData = {
           headers,
-          rows,
-          rawData: jsonData,
+          data: rows, // CORRECCIÓN: Renombrar 'rows' a 'data' para consistencia con TextConfig
+          rawData: jsonData, // Mantenemos rawData por si es útil en otro lugar
         };
 
         setTemplate((prev) => {
           const newTemplate = cloneTemplate(prev);
-          if (!newTemplate.sections[sectionIndex]) return prev;
+          const section = newTemplate.sections[sectionIndex];
+          if (!section) return prev;
 
           // 1. Guardar datos en la sección
-          newTemplate.sections[sectionIndex].excelData = processedData;
+          section.excelData = processedData;
 
-          // 2. Actualizar componentes que usen Excel
-          newTemplate.sections[sectionIndex].components.forEach((component) => {
-            if (component.dataSource?.sourceType === "excel") {
-              // Asegurar que existe el objeto dataSource
-              if (!component.dataSource) {
-                component.dataSource = { sourceType: "excel" };
+          // 2. Actualizar componentes que usen Excel (con protección)
+          // Se asegura que 'components' sea un array antes de iterar.
+          if (Array.isArray(section.components)) {
+            section.components.forEach((component) => {
+              if (component.dataSource?.sourceType === "excel") {
+                // Asegurar que existe el objeto dataSource
+                if (!component.dataSource) {
+                  component.dataSource = { sourceType: "excel" };
+                }
+                // Guardar copia completa de los datos
+                component.dataSource.excelData = processedData;
+                // Inicializar mappings si no existen
+                if (!component.dataSource.mappings) {
+                  component.dataSource.mappings = {
+                    columns: headers,
+                    xAxisField: headers[0] || "",
+                    yAxisField: headers[1] || "",
+                  };
+                }
               }
-              // Guardar copia completa de los datos
-              component.dataSource.excelData = processedData;
-              // Inicializar mappings si no existen
-              if (!component.dataSource.mappings) {
-                component.dataSource.mappings = {
-                  columns: headers,
-                  xAxisField: headers[0] || "",
-                  yAxisField: headers[1] || "",
-                };
-              }
-            }
-          });
+            });
+          } else {
+            // Si por alguna razón la sección no tiene un array de componentes, lo inicializamos.
+            section.components = [];
+          }
 
           return newTemplate;
         });
 
         console.log("✅ Excel cargado correctamente:", {
           headers: headers.length,
-          rows: rows.length,
+          dataRows: rows.length,
         });
       } catch (error) {
         console.error("❌ Error al procesar Excel:", error);

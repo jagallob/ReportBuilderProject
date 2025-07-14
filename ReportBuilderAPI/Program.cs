@@ -10,8 +10,6 @@ using ReportBuilderAPI.Repositories.Interfaces;
 using ReportBuilderAPI.Repositories.Implementations;
 using ReportBuilderAPI.Service.Interface;
 using ReportBuilderAPI.Service.Implementations;
-using Microsoft.Extensions.Configuration;
-using ReportBuilderAPI.Configuration;
 using ReportBuilderAPI.Services.AI.Interfaces;
 using ReportBuilderAPI.Services.AI.Implementation;
 using ReportBuilderAPI.Services.MCP.Interfaces;
@@ -42,9 +40,8 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Configuración AI
-builder.Services.Configure<AIConfiguration>(
-    builder.Configuration.GetSection("AI"));
-
+// CORRECCIÓN: Se busca la sección "AISettings" en appsettings.json, que coincide con el nombre de la clase de configuración.
+builder.Services.Configure<ReportBuilderAPI.Configuration.AISettings>(builder.Configuration.GetSection("AISettings"));
 // Registrar servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJWTUtils, JWTUtils>();
@@ -60,7 +57,6 @@ builder.Services.AddSingleton<IVectorService, VectorService>();
 
 // Registrar servicios MCP
 builder.Services.AddHttpClient<IMCPClientService, MCPClientService>();
-builder.Services.AddScoped<IMCPClientService, MCPClientService>();
 
 // Agregar controladores
 builder.Services.AddControllers()
@@ -195,6 +191,3 @@ app.MapControllers();
 app.UseStaticFiles(); // permite servir archivos como /uploads/*
 
 app.Run();
-
-
-
