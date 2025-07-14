@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 
-const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
+const ChartConfig = ({ component, onUpdate, sectionData }) => {
   const [excelColumns, setExcelColumns] = useState([]);
   const [dataMapping, setDataMapping] = useState({
     xAxisField: "",
@@ -8,26 +8,22 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
     seriesField: "",
   });
 
-  // Función helper para stopPropagation
-  const stopPropagation = (e) => e.stopPropagation();
-
   // Efecto para manejar cambios en los datos
   useEffect(() => {
     // Buscar datos en el componente o en la sección
-    const data =
+    const excelData =
       component.dataSource?.excelData ||
-      propsExcelData ||
-      (component.dataSource?.sourceType === "excel" && component.excelData);
+      (component.dataSource?.sourceType === "excel" && sectionData?.excelData);
 
-    if (data?.headers) {
-      setExcelColumns(data.headers);
+    if (excelData?.headers) {
+      setExcelColumns(excelData.headers);
 
       // Inicializar mapeos si no existen
       if (!component.dataSource.mappings) {
         const initialMappings = {
-          xAxisField: data.headers[0] || "",
-          yAxisField: data.headers[1] || "",
-          seriesField: data.headers[2] || "",
+          xAxisField: excelData.headers[0] || "",
+          yAxisField: excelData.headers[1] || "",
+          seriesField: excelData.headers[2] || "",
         };
         onUpdate("dataSource.mappings", initialMappings);
         setDataMapping(initialMappings);
@@ -35,7 +31,7 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
         setDataMapping(component.dataSource.mappings);
       }
     }
-  }, [component.dataSource, propsExcelData, component.excelData]);
+  }, [component.dataSource, sectionData]);
 
   const handleMappingChange = (field, value) => {
     const newMapping = { ...dataMapping, [field]: value };
@@ -58,7 +54,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
           value={component.chartType || "bar"}
           onChange={(e) => handleChartOptionChange("chartType", e.target.value)}
           className="w-full p-1 border rounded text-sm"
-          onClick={stopPropagation}
         >
           <option value="bar">Barras</option>
           <option value="line">Líneas</option>
@@ -81,7 +76,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               handleChartOptionChange("dataSource.sourceType", e.target.value)
             }
             className="w-full p-1 border rounded text-sm"
-            onClick={stopPropagation}
           >
             <option value="manual">Manual</option>
             <option value="excel">Excel</option>
@@ -101,7 +95,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               }
               className="w-full p-1 border rounded text-sm"
               placeholder="https://..."
-              onClick={stopPropagation}
             />
           </div>
         )}
@@ -123,7 +116,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
                     handleMappingChange("xAxisField", e.target.value)
                   }
                   className="w-full p-1 border rounded text-sm"
-                  onClick={stopPropagation}
                 >
                   <option value="">Seleccionar columna</option>
                   {excelColumns.map((column, idx) => (
@@ -144,7 +136,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
                     handleMappingChange("yAxisField", e.target.value)
                   }
                   className="w-full p-1 border rounded text-sm"
-                  onClick={stopPropagation}
                 >
                   <option value="">Seleccionar columna</option>
                   {excelColumns.map((column, idx) => (
@@ -166,7 +157,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
                       handleMappingChange("seriesField", e.target.value)
                     }
                     className="w-full p-1 border rounded text-sm"
-                    onClick={stopPropagation}
                   >
                     <option value="">No agrupar</option>
                     {excelColumns.map((column, idx) => (
@@ -193,7 +183,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               onChange={(e) =>
                 handleChartOptionChange("showLegend", e.target.checked)
               }
-              onClick={stopPropagation}
             />
             <span>Mostrar leyenda</span>
           </label>
@@ -205,7 +194,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               onChange={(e) =>
                 handleChartOptionChange("showTooltip", e.target.checked)
               }
-              onClick={stopPropagation}
             />
             <span>Mostrar tooltips</span>
           </label>
@@ -217,7 +205,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               onChange={(e) =>
                 handleChartOptionChange("stackBars", e.target.checked)
               }
-              onClick={stopPropagation}
               disabled={component.chartType !== "bar"}
             />
             <span>Barras apiladas</span>
@@ -230,7 +217,6 @@ const ChartConfig = ({ component, onUpdate, excelData: propsExcelData }) => {
               onChange={(e) =>
                 handleChartOptionChange("fillArea", e.target.checked)
               }
-              onClick={stopPropagation}
               disabled={!["area", "line"].includes(component.chartType)}
             />
             <span>Rellenar área</span>

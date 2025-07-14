@@ -55,7 +55,13 @@ const ConfigurationPanel = ({
           />
         );
       case "kpi":
-        return <KpiConfig component={component} onUpdate={onComponentUpdate} />;
+        return (
+          <KpiConfig
+            component={component}
+            onUpdate={onComponentUpdate}
+            sectionData={currentSection}
+          />
+        );
       default:
         return <div>Tipo de componente no soportado</div>;
     }

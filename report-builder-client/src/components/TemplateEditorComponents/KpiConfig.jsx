@@ -36,7 +36,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
             className="w-full p-1 border rounded text-sm"
             placeholder="0"
             disabled={component.dataSource?.sourceType === "excel"}
-            onClick={stopPropagation}
           />
         </div>
         <div>
@@ -47,7 +46,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
             onChange={(e) => onUpdate("unit", e.target.value)}
             className="w-full p-1 border rounded text-sm"
             placeholder="%"
-            onClick={stopPropagation}
           />
         </div>
       </div>
@@ -59,7 +57,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
           value={component.title || ""}
           onChange={(e) => onUpdate("title", e.target.value)}
           className="w-full p-1 border rounded text-sm"
-          onClick={stopPropagation}
         />
       </div>
 
@@ -69,7 +66,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
           value={component.dataSource?.sourceType || "manual"}
           onChange={(e) => onUpdate("dataSource.sourceType", e.target.value)}
           className="w-full p-1 border rounded text-sm"
-          onClick={stopPropagation}
         >
           <option value="manual">Manual</option>
           <option value="excel">Excel</option>
@@ -86,7 +82,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
             onChange={(e) => onUpdate("dataSource.apiUrl", e.target.value)}
             className="w-full p-1 border rounded text-sm"
             placeholder="https://..."
-            onClick={stopPropagation}
           />
         </div>
       )}
@@ -104,7 +99,6 @@ const KpiConfig = ({ component, onUpdate, sectionData }) => {
                     onUpdate("dataSource.mappings.dataField", e.target.value)
                   }
                   className="w-full p-1 border rounded text-xs"
-                  onClick={stopPropagation}
                 >
                   <option value="">Seleccionar columna</option>
                   {excelColumns.map((column, idx) => (
