@@ -105,7 +105,7 @@ const Component = ({
 
       const mappings = component.dataSource.mappings || {};
       return !!(
-        data?.rows?.length &&
+        data?.data?.length &&
         mappings.xAxisField &&
         mappings.yAxisField
       );

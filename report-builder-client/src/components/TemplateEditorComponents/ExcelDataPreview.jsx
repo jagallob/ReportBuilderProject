@@ -5,10 +5,10 @@ const ExcelDataPreview = ({ excelData, sectionIndex, handleFileUpload }) => {
 
   if (!excelData) return null;
 
-  const { headers, rows } = excelData;
+  const { headers, data: rows } = excelData;
 
   // Limitar la visualización a 5 filas para prevenir sobrecarga
-  const displayRows = rows.slice(0, 5);
+  const displayRows = rows ? rows.slice(0, 5) : [];
 
   const togglePreview = (e) => {
     e.stopPropagation(); // Evitar selección de la sección
@@ -22,7 +22,7 @@ const ExcelDataPreview = ({ excelData, sectionIndex, handleFileUpload }) => {
     >
       <div className="flex justify-between items-center mb-2">
         <h3 className="text-sm font-medium text-blue-700">
-          Datos Excel cargados ({rows.length} filas)
+          Datos Excel cargados ({rows ? rows.length : 0} filas)
         </h3>
         <div className="flex space-x-2">
           <button
@@ -75,7 +75,7 @@ const ExcelDataPreview = ({ excelData, sectionIndex, handleFileUpload }) => {
               ))}
             </tbody>
           </table>
-          {rows.length > 5 && (
+          {rows && rows.length > 5 && (
             <p className="mt-1 text-xs text-blue-600 italic">
               Mostrando 5 de {rows.length} filas
             </p>
