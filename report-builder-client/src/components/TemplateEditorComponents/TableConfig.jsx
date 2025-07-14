@@ -53,30 +53,34 @@ const TableConfig = ({ component, onUpdate, sectionData }) => {
 
   return (
     <div className="space-y-3 mt-2">
-      <div className="grid grid-cols-2 gap-2">
-        <div>
-          <label className="block text-xs text-gray-500">Filas</label>
-          <input
-            type="number"
-            min="1"
-            max="20"
-            value={component.rows || 3}
-            onChange={handleRowsChange}
-            className="w-full p-1 border rounded text-sm"
-          />
+      {/* MEJORA: Mostrar configuración de filas/columnas solo para tablas manuales */}
+      {(!component.dataSource ||
+        component.dataSource?.sourceType === "manual") && (
+        <div className="grid grid-cols-2 gap-2">
+          <div>
+            <label className="block text-xs text-gray-500">Filas</label>
+            <input
+              type="number"
+              min="1"
+              max="20"
+              value={component.rows || 3}
+              onChange={handleRowsChange}
+              className="w-full p-1 border rounded text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500">Columnas</label>
+            <input
+              type="number"
+              min="1"
+              max="10"
+              value={component.columns || 2}
+              onChange={handleColumnsChange}
+              className="w-full p-1 border rounded text-sm"
+            />
+          </div>
         </div>
-        <div>
-          <label className="block text-xs text-gray-500">Columnas</label>
-          <input
-            type="number"
-            min="1"
-            max="10"
-            value={component.columns || 2}
-            onChange={handleColumnsChange}
-            className="w-full p-1 border rounded text-sm"
-          />
-        </div>
-      </div>
+      )}
 
       <div>
         <label className="block text-xs text-gray-500">Fuente de datos</label>
