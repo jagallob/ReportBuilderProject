@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
+const TableConfig = ({ component, onUpdate, sectionData }) => {
   const [excelColumns, setExcelColumns] = useState([]);
   const [selectedColumns, setSelectedColumns] = useState([]);
 
@@ -27,7 +27,7 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
       }
       setSelectedColumns(newSelected);
     }
-  }, [component.dataSource, component.excelData, sectionData, isExcelLoaded]);
+  }, [component.dataSource, component.excelData, sectionData]);
 
   const handleColumnToggle = (column) => {
     let newSelectedColumns;
@@ -63,7 +63,6 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
             value={component.rows || 3}
             onChange={handleRowsChange}
             className="w-full p-1 border rounded text-sm"
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
         <div>
@@ -75,7 +74,6 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
             value={component.columns || 2}
             onChange={handleColumnsChange}
             className="w-full p-1 border rounded text-sm"
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
       </div>
@@ -86,7 +84,6 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
           value={component.dataSource?.sourceType || "manual"}
           onChange={(e) => onUpdate("dataSource.sourceType", e.target.value)}
           className="w-full p-1 border rounded text-sm"
-          onClick={(e) => e.stopPropagation()}
         >
           <option value="manual">Manual</option>
           <option value="excel">Excel</option>
@@ -103,7 +100,6 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
             onChange={(e) => onUpdate("dataSource.apiUrl", e.target.value)}
             className="w-full p-1 border rounded text-sm"
             placeholder="https://..."
-            onClick={(e) => e.stopPropagation()}
           />
         </div>
       )}
@@ -122,7 +118,6 @@ const TableConfig = ({ component, onUpdate, sectionData, isExcelLoaded }) => {
                     checked={selectedColumns.includes(column)}
                     onChange={() => handleColumnToggle(column)}
                     className="mr-2"
-                    onClick={(e) => e.stopPropagation()}
                   />
                   <label htmlFor={`col-${idx}`} className="text-xs">
                     {column}
