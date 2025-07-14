@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Options;
-using ReportBuilderAPI.Configuration;
 using ReportBuilderAPI.Services.MCP.Interfaces;
+using ReportBuilderAPI.Configuration;
 using ReportBuilderAPI.Services.MCP.Models;
 using System.Text.Json;
 
@@ -9,14 +9,14 @@ namespace ReportBuilderAPI.Services.MCP.Implementation
     public class MCPClientService : IMCPClientService
     {
         private readonly HttpClient _httpClient;
-        private readonly AIConfiguration _config;
+        private readonly AISettings _settings;
         private readonly ILogger<MCPClientService> _logger;
         private readonly Dictionary<int, MCPContext> _contextCache;
 
-        public MCPClientService(HttpClient httpClient, IOptions<AIConfiguration> config, ILogger<MCPClientService> logger)
+        public MCPClientService(HttpClient httpClient, IOptions<AISettings> settings, ILogger<MCPClientService> logger)
         {
             _httpClient = httpClient;
-            _config = config.Value;
+            _settings = settings.Value;
             _logger = logger;
             _contextCache = new Dictionary<int, MCPContext>();
         }
@@ -249,7 +249,7 @@ namespace ReportBuilderAPI.Services.MCP.Implementation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error verificando health de MCP");
-               
+
                 return new MCPHealth
                 {
                     Healthy = false,

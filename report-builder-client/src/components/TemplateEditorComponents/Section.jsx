@@ -111,7 +111,7 @@ const Section = ({
             </span>
             <span className="text-sm text-green-700">
               {section.excelData.headers.length} columnas,{" "}
-              {section.excelData.rows.length} filas
+              {section.excelData.data.length} filas
             </span>
           </div>
         </div>

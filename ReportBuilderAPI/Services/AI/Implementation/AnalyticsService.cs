@@ -11,30 +11,34 @@ namespace ReportBuilderAPI.Services.AI.Implementation
     public class AnalyticsService : IAnalyticsService
     {
         private readonly OpenAIClient _openAIClient;
-        private readonly AIConfiguration _config;
+        private readonly AISettings _settings;
         private readonly ILogger<AnalyticsService> _logger;
 
-        public AnalyticsService(IOptions<AIConfiguration> config, ILogger<AnalyticsService> logger)
+        public AnalyticsService(IOptions<AISettings> settings, ILogger<AnalyticsService> logger)
         {
-            _config = config.Value;
+            _settings = settings.Value;
             _logger = logger;
-            _openAIClient = new OpenAIClient(_config.OpenAI.ApiKey);
+            _openAIClient = new OpenAIClient(_settings.OpenAI.ApiKey);
         }
 
         public async Task<AnalysisResult> AnalyzeExcelDataAsync(AnalysisRequest request)
         {
             try
             {
-                _logger.LogInformation($"Iniciando análisis para ReportId: {request.ReportId}");
+                // CORRECCIÓN: Se accede a las propiedades a través de request.Config.
+                // ReportId ya no forma parte de esta solicitud, por lo que se usa información más relevante para el log.
+                _logger.LogInformation("Iniciando análisis de tipo: {AnalysisType}", request.Config.AnalysisType);
                 var prompt = BuildAnalysisPrompt(request);
                 var response = await CallOpenAIAsync(prompt);
-                var analysisResult = ParseAnalysisResponse(response, request.ReportId);
-                _logger.LogInformation($"Análisis completado para ReportId: {request.ReportId}");
+                // Pasamos un ID temporal/nulo (0) ya que no viene en la solicitud.
+                var analysisResult = ParseAnalysisResponse(response, 0);
+                _logger.LogInformation("Análisis de tipo '{AnalysisType}' completado.", request.Config.AnalysisType);
                 return analysisResult;
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error en análisis para ReportId: {request.ReportId}");
+                // CORRECCIÓN: Se elimina la referencia a la propiedad inexistente ReportId.
+                _logger.LogError(ex, "Error durante el análisis de datos de Excel.");
                 throw;
             }
         }
@@ -129,11 +133,14 @@ namespace ReportBuilderAPI.Services.AI.Implementation
         private string BuildAnalysisPrompt(AnalysisRequest request)
         {
             var dataJson = JsonSerializer.Serialize(request.Data);
+            var config = request.Config;
+
             return $@"
              Analiza los siguientes datos de reporte:
             
-             Tipo de Análisis: {request.AnalysisType}
-             Período: {request.PeriodStart:yyyy-MM-dd} a {request.PeriodEnd:yyyy-MM-dd}
+             Tipo de Análisis: {config.AnalysisType}
+             Idioma de la respuesta: {config.Language}
+             Tono de la respuesta: {config.Tone}
              Datos: {dataJson}
             
              Proporciona un análisis detallado que incluya:
@@ -159,14 +166,14 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             {
                 var chatCompletionsOptions = new ChatCompletionsOptions()
                 {
-                    DeploymentName = _config.OpenAI.Model,
+                    DeploymentName = _settings.OpenAI.Model,
                     Messages =
                     {
                         new ChatRequestSystemMessage("Eres un analista de datos experto que proporciona insights valiosos a partir de datos de reportes empresariales."),
                         new ChatRequestUserMessage(prompt)
                     },
-                    Temperature = (float)_config.OpenAI.Temperature,
-                    MaxTokens = _config.OpenAI.MaxTokens
+                    Temperature = (float)_settings.OpenAI.Temperature,
+                    MaxTokens = _settings.OpenAI.MaxTokens
                 };
 
                 Response<ChatCompletions> response = await _openAIClient.GetChatCompletionsAsync(chatCompletionsOptions);

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportBuilderAPI.Services.AI.Interfaces;
+using ReportBuilderAPI.DTOs;
 using ReportBuilderAPI.Services.AI.Models;
 
 namespace ReportBuilderAPI.Controllers
@@ -17,13 +18,37 @@ namespace ReportBuilderAPI.Controllers
             _logger = logger;
         }
 
-        [HttpPost("analyze-excel")]
+        [HttpPost("analyze")]
         public async Task<ActionResult<AnalysisResult>> AnalyzeExcel([FromBody] AnalysisRequest request)
         {
             try
             {
-                var result = await _analyticsService.AnalyzeExcelDataAsync(request);
-                return Ok(result);
+                // Log para confirmar que el binding del modelo fue exitoso.
+                _logger.LogInformation("Solicitud de análisis recibida correctamente. Tipo de análisis: {AnalysisType}, Idioma: {Language}",
+                    request.Config.AnalysisType,
+                    request.Config.Language);
+
+                // Devolvemos un resultado falso para probar que el flujo completo funciona.
+                var fakeResult = new AnalysisResult
+                {
+                    ReportId = 1,
+                    Summary = $"Este es un resumen de prueba para un análisis '{request.Config.AnalysisType}' en '{request.Config.Language}'.",
+                    Metrics = new Dictionary<string, object>
+                    {
+                        { "Ventas Totales", 125000 },
+                        { "Ticket Promedio", 85.50 },
+                        { "Filas Recibidas", request.Data.Count }
+                    },
+                    Trends = new List<Trend> { new Trend { Metric = "Ventas", Direction = "Up", ChangePercentage = 15 } },
+                    Insights = new List<Insight> { new Insight { Title = "Oportunidad Detectada", Description = "El producto 'X' tiene un rendimiento superior al promedio." } },
+                    GeneratedAt = DateTime.UtcNow
+                };
+
+                await Task.Delay(1000);
+                return Ok(fakeResult);
+
+                // var result = await _analyticsService.AnalyzeExcelDataAsync(request);
+                // return Ok(result);
             }
             catch (Exception ex)
             {
@@ -81,14 +106,5 @@ namespace ReportBuilderAPI.Controllers
                 return StatusCode(500, "Error interno del servidor");
             }
         }
-    }
-
-    public class ComparisonRequest
-    {
-        public int AreaId { get; set; }
-        public DateTime Period1Start { get; set; }
-        public DateTime Period1End { get; set; }
-        public DateTime Period2Start { get; set; }
-        public DateTime Period2End { get; set; }
     }
 }

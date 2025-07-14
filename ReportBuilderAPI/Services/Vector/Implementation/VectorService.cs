@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Microsoft.Extensions.Options;
 using ReportBuilderAPI.Configuration;
+
 using ReportBuilderAPI.Services.Vector.Interfaces;
 using ReportBuilderAPI.Services.Vector.Models;
 using Azure.AI.OpenAI;
@@ -11,16 +12,16 @@ namespace ReportBuilderAPI.Services.Vector.Implementation
     public class VectorService : IVectorService
     {
         private readonly OpenAIClient _openAIClient;
-        private readonly AIConfiguration _config;
+        private readonly AISettings _settings;
         private readonly ILogger<VectorService> _logger;
         private readonly ConcurrentDictionary<string, VectorDocument> _vectorStore;
         private bool _isInitialized;
 
-        public VectorService(IOptions<AIConfiguration> config, ILogger<VectorService> logger)
+        public VectorService(IOptions<AISettings> settings, ILogger<VectorService> logger)
         {
-            _config = config.Value;
+            _settings = settings.Value;
             _logger = logger;
-            _openAIClient = new OpenAIClient(_config.OpenAI.ApiKey);
+            _openAIClient = new OpenAIClient(_settings.OpenAI.ApiKey);
             _vectorStore = new ConcurrentDictionary<string, VectorDocument>();
             _isInitialized = false;
         }
@@ -82,7 +83,7 @@ namespace ReportBuilderAPI.Services.Vector.Implementation
             {
                 _logger.LogDebug($"Generando embedding para texto de {text.Length} caracteres");
 
-                var embeddingsOptions = new EmbeddingsOptions(_config.OpenAI.EmbeddingModel, new[] { text });
+                var embeddingsOptions = new EmbeddingsOptions(_settings.OpenAI.EmbeddingModel, new[] { text });
 
                 Response<Embeddings> response = await _openAIClient.GetEmbeddingsAsync(embeddingsOptions);
 

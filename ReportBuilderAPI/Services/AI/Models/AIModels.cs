@@ -1,14 +1,8 @@
+using System.Collections.Generic;
+using System.Text.Json.Serialization;
+
 namespace ReportBuilderAPI.Services.AI.Models
 {
-    public class AnalysisRequest
-    {
-        public int ReportId { get; set; }
-        public Dictionary<string, object> Data { get; set; } = new();
-        public string AnalysisType { get; set; } = string.Empty;
-        public DateTime PeriodStart { get; set; }
-        public DateTime PeriodEnd { get; set; }
-    }
-
     public class AnalysisResult
     {
         public int ReportId { get; set; }
@@ -43,15 +37,6 @@ namespace ReportBuilderAPI.Services.AI.Models
         public DateTime Date { get; set; }
         public double Value { get; set; }
         public string Label { get; set; } = string.Empty;
-    }
-
-    public class NarrativeRequest
-    {
-        public int TemplateId { get; set; }
-        public Dictionary<string, object> Data { get; set; } = new();
-        public string Context { get; set; } = string.Empty;
-        public string Style { get; set; } = "Professional";
-        public string Language { get; set; } = "es";
     }
 
     public class NarrativeResult

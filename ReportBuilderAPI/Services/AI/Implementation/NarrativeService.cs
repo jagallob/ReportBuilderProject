@@ -3,6 +3,7 @@ using Azure;
 using Microsoft.Extensions.Options;
 using Azure.AI.OpenAI;
 using ReportBuilderAPI.Configuration;
+
 using ReportBuilderAPI.Services.AI.Interfaces;
 using ReportBuilderAPI.Services.AI.Models;
 
@@ -11,14 +12,14 @@ namespace ReportBuilderAPI.Services.AI.Implementation
     public class NarrativeService : INarrativeService
     {
         private readonly OpenAIClient _openAIClient;
-        private readonly AIConfiguration _config;
+        private readonly AISettings _settings;
         private readonly ILogger<NarrativeService> _logger;
 
-        public NarrativeService(IOptions<AIConfiguration> config, ILogger<NarrativeService> logger)
+        public NarrativeService(IOptions<AISettings> settings, ILogger<NarrativeService> logger)
         {
-            _config = config.Value;
+            _settings = settings.Value;
             _logger = logger;
-            _openAIClient = new OpenAIClient(_config.OpenAI.ApiKey);
+            _openAIClient = new OpenAIClient(_settings.OpenAI.ApiKey);
         }
 
         public async Task<NarrativeResult> GenerateNarrativeAsync(NarrativeRequest request)
@@ -75,12 +76,13 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 
         private string BuildNarrativePrompt(NarrativeRequest request)
         {
-            var dataJson = JsonSerializer.Serialize(request.Data);
+            // The new request model contains the result of the analysis, not raw data.
+            var analysisJson = JsonSerializer.Serialize(request.Analysis);
             return $@"
              Genera una narrativa profesional para un reporte con las siguientes características:
             
-             Template ID: {request.TemplateId}, Estilo: {request.Style}, Idioma: {request.Language}
-             Contexto: {request.Context}, Datos: {dataJson}
+             Template ID: {request.TemplateId}, Tono: {request.Config.Tone}, Idioma: {request.Config.Language}
+             Datos del Análisis: {analysisJson}
             
              La narrativa debe incluir: Título, Resumen, Secciones, Puntos clave y Conclusiones.
             
@@ -108,14 +110,14 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             {
                 var chatCompletionsOptions = new ChatCompletionsOptions()
                 {
-                    DeploymentName = _config.OpenAI.Model,
+                    DeploymentName = _settings.OpenAI.Model,
                     Messages =
                     {
                         new ChatRequestSystemMessage("Eres un escritor profesional especializado en reportes empresariales. Generas narrativas claras, concisas y profesionales."),
                         new ChatRequestUserMessage(prompt)
                     },
-                    Temperature = (float)_config.OpenAI.Temperature,
-                    MaxTokens = _config.OpenAI.MaxTokens
+                    Temperature = (float)_settings.OpenAI.Temperature,
+                    MaxTokens = _settings.OpenAI.MaxTokens
                 };
 
                 Response<ChatCompletions> response = await _openAIClient.GetChatCompletionsAsync(chatCompletionsOptions);

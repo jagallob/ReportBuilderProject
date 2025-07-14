@@ -6,7 +6,6 @@ import ComponentPalette from "./TemplateEditorComponents/ComponentPalette";
 import SectionsArea from "./TemplateEditorComponents/SectionsArea";
 import ConfigurationPanel from "./TemplateEditorComponents/ConfigurationPanel";
 import PreviewPanel from "./TemplateEditorComponents/PreviewPanel";
-import PreviewButton from "./TemplateEditorComponents/PreviewButton";
 import useTemplateManagement from "./TemplateEditorComponents/useTemplateManagement";
 import EventModal from "./TemplateEditorComponents/EventModal";
 import SelectEventsModal from "./SelectEventsModal";
@@ -31,7 +30,7 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
     setEventData,
     handleFileUpload,
     addEventToSection,
-    removeEvent,
+    // removeEvent, // Eliminado ya que no se usa
     generateDefaultStructure,
   } = useTemplateManagement(initialTemplate);
 
@@ -39,17 +38,14 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
     setShowPreview(!showPreview);
   };
 
-  // Handler para agregar evento a la sección seleccionada (evita función inline y valida selectedItem)
   const handleAddEventToSection = () => {
     if (selectedItem && typeof selectedItem.index === "number") {
       addEventToSection(selectedItem.index);
     }
   };
 
-  // Handler para agregar eventos seleccionados desde SelectEventsModal
   const handleSelectEvents = (events) => {
     if (selectedItem && typeof selectedItem.index === "number") {
-      // Agregar los eventos seleccionados a la sección correspondiente
       const sectionIndex = selectedItem.index;
       const updatedSections = [...template.sections];
       updatedSections[sectionIndex].events = [
@@ -58,6 +54,13 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
       ];
       updateTemplate("sections", updatedSections);
     }
+  };
+
+  const getCurrentSection = () => {
+    if (!selectedItem) return null;
+    return selectedItem.type === "section"
+      ? template.sections[selectedItem.index]
+      : template.sections[selectedItem.sectionIndex];
   };
 
   return (
@@ -92,10 +95,8 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
             selectedItem={selectedItem}
             template={template}
             updateTemplate={updateTemplate}
-            setIsModalOpen={setIsModalOpen}
-            removeEvent={removeEvent}
             handleFileUpload={handleFileUpload}
-            currentSection={template.sections[selectedItem.index]}
+            currentSection={getCurrentSection()}
           />
         )}
 
@@ -110,7 +111,6 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
             />
           )}
 
-        {/* Botones flotantes para agregar sucesos solo si hay sección seleccionada */}
         {selectedItem && typeof selectedItem.index === "number" && (
           <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-end">
             <button
@@ -130,7 +130,6 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
           </div>
         )}
 
-        {/* Modal para seleccionar eventos existentes */}
         {showSelectEventsModal &&
           selectedItem &&
           typeof selectedItem.index === "number" && (
@@ -150,5 +149,3 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
 };
 
 export default TemplateEditor;
-
-/* Tailwind extra: .fab-action { @apply flex items-center gap-2 text-white font-bold py-2 px-4 rounded shadow; } */
