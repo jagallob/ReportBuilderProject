@@ -42,6 +42,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 // Configuración AI
 // CORRECCIÓN: Se busca la sección "AISettings" en appsettings.json, que coincide con el nombre de la clase de configuración.
 builder.Services.Configure<ReportBuilderAPI.Configuration.AISettings>(builder.Configuration.GetSection("AISettings"));
+builder.Services.AddHttpClient<IDeepSeekService, DeepSeekService>();
+
+
 // Registrar servicios
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddSingleton<IJWTUtils, JWTUtils>();
