@@ -40,7 +40,20 @@ export const analyzeData = (excelData, config = {}) => {
 
   // Extraer valores numéricos, filtrando entradas no válidas.
   const values = rows
-    .map((row) => parseFloat(row[dataColumnIndex]))
+    .map((row) => {
+      const rawValue = row[dataColumnIndex];
+
+      // Si el valor es nulo o una cadena vacía, se ignora.
+      if (rawValue == null || rawValue === "") {
+        return NaN;
+      }
+
+      // MEJORA: Hacer el parseo de números más robusto.
+      // Convierte a string y elimina caracteres no numéricos como '$', ',', '€', etc.
+      // Se conserva el punto decimal y el signo negativo.
+      const cleanedValue = String(rawValue).replace(/[^0-9.-]+/g, "");
+      return parseFloat(cleanedValue);
+    })
     .filter((val) => !isNaN(val));
 
   // Si no hay valores numéricos válidos, devolver valores por defecto.
@@ -105,6 +118,29 @@ export const analyzeData = (excelData, config = {}) => {
 };
 
 /**
+ * Convierte un número de serie de fecha de Excel a una fecha local.
+ * @param {number} serial - El número de serie de la fecha.
+ * @returns {Date} Un objeto de fecha de JavaScript.
+ */
+function excelSerialToDate(serial) {
+  const utc_days = Math.floor(serial - 25569);
+  const date = new Date(utc_days * 86400 * 1000);
+  return date;
+}
+
+/**
+ * Formatea un valor, convirtiéndolo a fecha si parece ser un número de serie de Excel.
+ * @param {*} value - El valor a formatear.
+ * @returns {string|number|*} El valor formateado o el original.
+ */
+export function formatExcelValue(value) {
+  if (typeof value === "number" && value >= 25569 && value < 60000) {
+    return excelSerialToDate(value).toLocaleDateString();
+  }
+  return value;
+}
+
+/**
  * Replaces placeholders in a template string with values from analysis or Excel data.
  * Placeholders are in the format {key}, e.g., {avg} or {Nombre de Cliente}.
  * @param {string} template - The template string.
@@ -134,7 +170,7 @@ export const processTemplateVariables = (template, analysis, excelData) => {
       if (typeof value === "number" && analysisKey !== "count") {
         return value.toFixed(2);
       }
-      return value;
+      return formatExcelValue(value);
     }
 
     // 2. Si no, buscar la clave como un encabezado de Excel.
@@ -142,7 +178,7 @@ export const processTemplateVariables = (template, analysis, excelData) => {
       const colIndex = excelData.headers.indexOf(trimmedKey);
       if (colIndex !== -1) {
         // MEJORA: Devolver el valor de la primera fila, que es más útil que toda la columna.
-        return excelData.data[0][colIndex];
+        return formatExcelValue(excelData.data[0][colIndex]);
       }
     }
 

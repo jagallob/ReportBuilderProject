@@ -107,14 +107,34 @@ const useTemplateManagement = (initialTemplate) => {
     // Inicialización de propiedades específicas según el tipo
     if (componentType === "text") {
       newComponent.content = "";
+      // MEJORA: Inicializar analysisConfig para evitar errores de 'undefined'
+      // y asegurar que el componente tenga una estructura consistente.
+      newComponent.analysisConfig = {
+        dataColumn: "",
+        categoryColumn: "",
+      };
     } else if (componentType === "table") {
       newComponent.rows = 3;
       newComponent.columns = 2;
     } else if (componentType === "chart") {
       newComponent.chartType = "bar";
+      // MEJORA: Inicializar mappings para evitar errores
+      if (!newComponent.dataSource.mappings) {
+        newComponent.dataSource.mappings = {
+          xAxisField: "",
+          yAxisField: "",
+        };
+      }
     } else if (componentType === "kpi") {
-      newComponent.value = "";
-      newComponent.unit = "%";
+      newComponent.value = "0";
+      newComponent.unit = "";
+      // MEJORA: Inicializar mappings para la configuración desde Excel
+      if (!newComponent.dataSource.mappings) {
+        newComponent.dataSource.mappings = {
+          kpiColumn: "",
+          aggregation: "sum", // 'sum', 'avg', 'count', 'max', 'min'
+        };
+      }
     }
 
     const updatedSections = cloneTemplate(template.sections);
@@ -246,6 +266,7 @@ const useTemplateManagement = (initialTemplate) => {
         });
       } catch (error) {
         console.error("❌ Error al procesar Excel:", error);
+        // Aquí podrías mostrar un mensaje de error al usuario
       }
     };
     reader.readAsArrayBuffer(file);
@@ -313,12 +334,11 @@ const useTemplateManagement = (initialTemplate) => {
               sourceType: "excel",
               mappings: {}, // Para que el usuario complete
             },
+            displayOptions: {},
           },
           {
             componentId: uuidv4(),
             type: "kpi",
-            value: "",
-            unit: "%",
             dataSource: { sourceType: "excel" },
           },
         ],

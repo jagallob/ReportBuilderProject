@@ -1,3 +1,5 @@
+import { formatExcelValue } from "../../utils/textAnalysisUtils";
+
 export const TableRenderer = ({ component, excelData }) => {
   const {
     dataSource,
@@ -43,7 +45,7 @@ export const TableRenderer = ({ component, excelData }) => {
               >
                 {columnIndexes.map((colIndex, i) => (
                   <td key={i} className="px-4 py-2 border">
-                    {colIndex >= 0 ? row[colIndex] : ""}
+                    {colIndex >= 0 ? formatExcelValue(row[colIndex]) : ""}
                   </td>
                 ))}
               </tr>

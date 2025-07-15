@@ -52,15 +52,20 @@ const Component = ({
   // Componente wrapper para mostrar la previsualización
   const renderPreview = () => {
     if (component.type === "chart") {
-      return (
-        <div className="mt-4 p-3 border rounded bg-gray-50">
-          <h4 className="text-sm font-medium mb-2">Previsualización</h4>
-          <ChartRenderer component={component} excelData={excelData} />
-        </div>
-      );
+      // Mostrar el gráfico solo si la fuente es Excel y hay datos y mapeos
+      if (
+        component.dataSource?.sourceType === "excel" &&
+        excelData?.data &&
+        component.dataSource?.mappings?.xAxisField &&
+        component.dataSource?.mappings?.yAxisField
+      ) {
+        return <ChartRenderer component={component} excelData={excelData} />;
+      }
     }
     return null;
   };
+
+  const preview = renderPreview();
 
   const renderConfig = () => {
     switch (component.type) {
@@ -73,7 +78,14 @@ const Component = ({
           />
         );
       case "table":
-        return <TableConfig component={component} onUpdate={onUpdate} />;
+        // MEJORA: Pasar sectionData para que pueda acceder a los datos de Excel
+        return (
+          <TableConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData}
+          />
+        );
       case "chart":
         return (
           <>
@@ -81,12 +93,25 @@ const Component = ({
               component={component}
               onUpdate={onUpdate}
               excelData={excelData}
+              sectionData={sectionData}
             />
-            {renderPreview()}
+            {preview && (
+              <div className="mt-4 p-3 border rounded bg-gray-50">
+                {" "}
+                <h4 className="text-sm font-medium mb-2">Previsualización</h4>
+                {preview}
+              </div>
+            )}
           </>
         );
       case "kpi":
-        return <KpiConfig component={component} onUpdate={onUpdate} />;
+        return (
+          <KpiConfig
+            component={component}
+            onUpdate={onUpdate}
+            sectionData={sectionData}
+          />
+        );
       default:
         return null;
     }
@@ -105,7 +130,7 @@ const Component = ({
 
       const mappings = component.dataSource.mappings || {};
       return !!(
-        data?.data?.length &&
+        data?.data?.length > 0 &&
         mappings.xAxisField &&
         mappings.yAxisField
       );
