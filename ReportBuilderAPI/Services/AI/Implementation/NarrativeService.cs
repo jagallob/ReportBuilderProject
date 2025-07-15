@@ -11,24 +11,24 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class NarrativeService : INarrativeService
     {
-        private readonly OpenAIClient _openAIClient;
+        private readonly IDeepSeekService _deepSeekService;
         private readonly AISettings _settings;
         private readonly ILogger<NarrativeService> _logger;
 
-        public NarrativeService(IOptions<AISettings> settings, ILogger<NarrativeService> logger)
+        public NarrativeService(IOptions<AISettings> settings, ILogger<NarrativeService> logger, IDeepSeekService deepSeekService)
         {
             _settings = settings.Value;
             _logger = logger;
-            _openAIClient = new OpenAIClient(_settings.OpenAI.ApiKey);
+            _deepSeekService = deepSeekService;
         }
 
         public async Task<NarrativeResult> GenerateNarrativeAsync(NarrativeRequest request)
         {
             try
             {
-                _logger.LogInformation($"Generando narrativa para TemplateId: {request.TemplateId}");
+                _logger.LogInformation($"Generando narrativa con DeepSeek para TemplateId: {request.TemplateId}");
                 var prompt = BuildNarrativePrompt(request);
-                var response = await CallOpenAIAsync(prompt);
+                var response = await _deepSeekService.GenerateTextAsync(prompt); // Usamos DeepSeek
                 var narrativeResult = ParseNarrativeResponse(response);
                 _logger.LogInformation($"Narrativa generada para TemplateId: {request.TemplateId}");
                 return narrativeResult;
@@ -55,7 +55,7 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             {
                 _logger.LogInformation($"Personalizando narrativa ID: {request.NarrativeId}");
                 var prompt = BuildCustomizationPrompt(request);
-                var response = await CallOpenAIAsync(prompt);
+                var response = await _deepSeekService.GenerateTextAsync(prompt); // Usamos DeepSeek
                 return ParseNarrativeResponse(response);
             }
             catch (Exception ex)
@@ -102,38 +102,6 @@ namespace ReportBuilderAPI.Services.AI.Implementation
              Modificaciones: {modificationsJson}, Revisor: {request.Reviewer}, Comentarios: {request.Comments}.
              Mantén la estructura JSON.
              ";
-        }
-
-        private async Task<string> CallOpenAIAsync(string prompt)
-        {
-            try
-            {
-                var chatCompletionsOptions = new ChatCompletionsOptions()
-                {
-                    DeploymentName = _settings.OpenAI.Model,
-                    Messages =
-                    {
-                        new ChatRequestSystemMessage("Eres un escritor profesional especializado en reportes empresariales. Generas narrativas claras, concisas y profesionales."),
-                        new ChatRequestUserMessage(prompt)
-                    },
-                    Temperature = (float)_settings.OpenAI.Temperature,
-                    MaxTokens = _settings.OpenAI.MaxTokens
-                };
-
-                Response<ChatCompletions> response = await _openAIClient.GetChatCompletionsAsync(chatCompletionsOptions);
-                ChatResponseMessage responseMessage = response.Value.Choices[0].Message;
-                return responseMessage.Content ?? string.Empty;
-            }
-            catch (RequestFailedException ex)
-            {
-                _logger.LogError(ex, "Error en la solicitud a OpenAI API para narrativa. Status Code: {StatusCode}, Error: {ErrorCode}", ex.Status, ex.ErrorCode);
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error inesperado llamando a OpenAI API para narrativa");
-                throw;
-            }
         }
 
         private NarrativeResult ParseNarrativeResponse(string response)

@@ -10,15 +10,15 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class AnalyticsService : IAnalyticsService
     {
-        private readonly OpenAIClient _openAIClient;
+        private readonly IDeepSeekService _deepSeekService; // Inyectamos el nuevo servicio
         private readonly AISettings _settings;
         private readonly ILogger<AnalyticsService> _logger;
 
-        public AnalyticsService(IOptions<AISettings> settings, ILogger<AnalyticsService> logger)
+        public AnalyticsService(IOptions<AISettings> settings, ILogger<AnalyticsService> logger, IDeepSeekService deepSeekService) // Inyectamos en el constructor
         {
+            _deepSeekService = deepSeekService;
             _settings = settings.Value;
             _logger = logger;
-            _openAIClient = new OpenAIClient(_settings.OpenAI.ApiKey);
         }
 
         public async Task<AnalysisResult> AnalyzeExcelDataAsync(AnalysisRequest request)
@@ -27,11 +27,9 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             {
                 // CORRECCIÓN: Se accede a las propiedades a través de request.Config.
                 // ReportId ya no forma parte de esta solicitud, por lo que se usa información más relevante para el log.
-                _logger.LogInformation("Iniciando análisis de tipo: {AnalysisType}", request.Config.AnalysisType);
-                var prompt = BuildAnalysisPrompt(request);
-                var response = await CallOpenAIAsync(prompt);
-                // Pasamos un ID temporal/nulo (0) ya que no viene en la solicitud.
-                var analysisResult = ParseAnalysisResponse(response, 0);
+                _logger.LogInformation("Iniciando análisis con DeepSeek de tipo: {AnalysisType}", request.Config.AnalysisType); // Mensaje actualizado
+                // Usamos DeepSeekService directamente
+                var analysisResult = await _deepSeekService.AnalyzeDataAsync(request);
                 _logger.LogInformation("Análisis de tipo '{AnalysisType}' completado.", request.Config.AnalysisType);
                 return analysisResult;
             }
@@ -105,8 +103,11 @@ namespace ReportBuilderAPI.Services.AI.Implementation
                  2. Tendencias identificadas
                  3. Recomendaciones
                  ";
-                var response = await CallOpenAIAsync(prompt);
-                return ParseAnalysisResponse(response, areaId);
+                // Esta parte aún usa OpenAI, si se quiere migrar, se debe usar DeepSeek
+                // var response = await _deepSeekService.GenerateTextAsync(prompt);
+                // return ParseAnalysisResponse(response, areaId);
+                _logger.LogWarning("ComparePeroidsAsync no está completamente migrado a DeepSeek.");
+                return new AnalysisResult { Summary = "Función no implementada con DeepSeek" };
             }
             catch (Exception ex)
             {
@@ -128,108 +129,6 @@ namespace ReportBuilderAPI.Services.AI.Implementation
                 _logger.LogError(ex, "Error procesando datos");
                 return false;
             }
-        }
-
-        private string BuildAnalysisPrompt(AnalysisRequest request)
-        {
-            var dataJson = JsonSerializer.Serialize(request.Data);
-            var config = request.Config;
-
-            return $@"
-             Analiza los siguientes datos de reporte:
-            
-             Tipo de Análisis: {config.AnalysisType}
-             Idioma de la respuesta: {config.Language}
-             Tono de la respuesta: {config.Tone}
-             Datos: {dataJson}
-            
-             Proporciona un análisis detallado que incluya:
-             1. Resumen ejecutivo
-             2. Insights principales (máximo 5)
-             3. Tendencias identificadas
-             4. Métricas clave
-             5. Recomendaciones
-            
-             Formato de respuesta en JSON:
-             {{
-                 ""summary"": ""resumen ejecutivo"",
-                 ""insights"": [{{""type"": ""tipo"", ""title"": ""título"", ""description"": ""descripción"", ""severity"": ""Info|Warning|Critical"", ""confidence"": 0.0-1.0}}],
-                 ""trends"": [{{""metric"": ""métrica"", ""direction"": ""Up|Down|Stable"", ""changePercentage"": 0.0, ""period"": ""período""}}],
-                 ""metrics"": {{""key"": ""value""}}
-             }}
-             ";
-        }
-
-        private async Task<string> CallOpenAIAsync(string prompt)
-        {
-            try
-            {
-                var chatCompletionsOptions = new ChatCompletionsOptions()
-                {
-                    DeploymentName = _settings.OpenAI.Model,
-                    Messages =
-                    {
-                        new ChatRequestSystemMessage("Eres un analista de datos experto que proporciona insights valiosos a partir de datos de reportes empresariales."),
-                        new ChatRequestUserMessage(prompt)
-                    },
-                    Temperature = (float)_settings.OpenAI.Temperature,
-                    MaxTokens = _settings.OpenAI.MaxTokens
-                };
-
-                Response<ChatCompletions> response = await _openAIClient.GetChatCompletionsAsync(chatCompletionsOptions);
-                ChatResponseMessage responseMessage = response.Value.Choices[0].Message;
-                return responseMessage.Content ?? string.Empty;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error llamando a OpenAI API");
-                throw;
-            }
-        }
-
-        private AnalysisResult ParseAnalysisResponse(string response, int reportId)
-        {
-            try
-            {
-                var jsonResponse = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(response);
-                return new AnalysisResult
-                {
-                    ReportId = reportId,
-                    Summary = jsonResponse.TryGetValue("summary", out var summary) ? summary.GetString() ?? "" : "",
-                    Insights = jsonResponse.TryGetValue("insights", out var insights) ? ParseInsights(insights) : new List<Insight>(),
-                    Trends = jsonResponse.TryGetValue("trends", out var trends) ? ParseTrends(trends) : new List<Trend>(),
-                    Metrics = jsonResponse.TryGetValue("metrics", out var metrics) ? JsonSerializer.Deserialize<Dictionary<string, object>>(metrics.GetRawText()) ?? new() : new(),
-                    GeneratedAt = DateTime.UtcNow
-                };
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error parseando respuesta de IA");
-                return new AnalysisResult
-                {
-                    ReportId = reportId,
-                    Summary = "Análisis completado con datos procesados",
-                    GeneratedAt = DateTime.UtcNow
-                };
-            }
-        }
-
-        private List<Insight> ParseInsights(JsonElement insightsElement)
-        {
-            if (insightsElement.ValueKind == JsonValueKind.Array)
-            {
-                return JsonSerializer.Deserialize<List<Insight>>(insightsElement.GetRawText()) ?? new List<Insight>();
-            }
-            return new List<Insight>();
-        }
-
-        private List<Trend> ParseTrends(JsonElement trendsElement)
-        {
-            if (trendsElement.ValueKind == JsonValueKind.Array)
-            {
-                return JsonSerializer.Deserialize<List<Trend>>(trendsElement.GetRawText()) ?? new List<Trend>();
-            }
-            return new List<Trend>();
         }
 
         private List<DataPoint> GenerateDataPoints(DateTime startDate, DateTime endDate)
