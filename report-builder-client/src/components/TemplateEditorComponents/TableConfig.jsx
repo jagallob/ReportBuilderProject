@@ -131,7 +131,6 @@ const TableConfig = ({ component, onUpdate, sectionData }) => {
             </div>
           </div>
         )}
-
       {/* Si no hay datos Excel cargados pero la fuente es Excel
       {component.dataSource?.sourceType === "excel" &&
         excelColumns.length === 0 && (

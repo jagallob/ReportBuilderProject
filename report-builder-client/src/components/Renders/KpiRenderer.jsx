@@ -1,3 +1,5 @@
+import { formatExcelValue } from "../../utils/textAnalysisUtils";
+
 export const KpiRenderer = ({ component, excelData }) => {
   let value = component.value || 0;
   let unit = component.unit || "";
@@ -9,22 +11,26 @@ export const KpiRenderer = ({ component, excelData }) => {
 
     if (dataField) {
       const colIndex = excelData.headers.indexOf(dataField);
-      if (colIndex >= 0 && excelData.rows[rowIndex]) {
-        const excelValue = parseFloat(excelData.rows[rowIndex][colIndex]);
-        if (!isNaN(excelValue)) {
-          displayValue = excelValue;
+      if (colIndex >= 0 && excelData.data[rowIndex]) {
+        const excelValue = excelData.data[rowIndex][colIndex];
+        // No intentar parsear a float aquí, dejar que el formateador decida.
+        if (excelValue !== undefined && excelValue !== null) {
+          displayValue = formatExcelValue(excelValue);
         }
       }
     }
   }
 
   // Formatear el valor según el tipo
-  if (component.format === "currency") {
+  if (component.format === "currency" && typeof displayValue === "number") {
     displayValue = new Intl.NumberFormat("es-ES", {
       style: "currency",
       currency: "EUR",
     }).format(displayValue);
-  } else if (component.format === "percent") {
+  } else if (
+    component.format === "percent" &&
+    typeof displayValue === "number"
+  ) {
     displayValue = `${displayValue}%`;
   }
 

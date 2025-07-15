@@ -19,7 +19,7 @@ const ComponentRenderer = ({ component, excelData }) => {
         <div
           id={`chart-${component.componentId}`}
           className="chart-container"
-          style={{ width: "100%", height: "300px" }}
+          style={{ width: "100%", height: "300px", overflow: "hidden" }}
         >
           <ChartRenderer component={component} excelData={excelData} />
         </div>

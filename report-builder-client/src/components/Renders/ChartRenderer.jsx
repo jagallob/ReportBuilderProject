@@ -1,4 +1,5 @@
 import React from "react";
+import { formatExcelValue } from "../../utils/textAnalysisUtils";
 import {
   BarChart,
   LineChart,
@@ -47,7 +48,13 @@ export const ChartRenderer = ({ component, excelData: propsExcelData }) => {
   // Procesar datos desde Excel si está disponible
   let chartData = [];
 
-  if (component.dataSource?.sourceType === "excel" && excelData?.rows) {
+  if (component.dataSource?.sourceType === "excel" && excelData?.data) {
+    if (!excelData.headers || excelData.headers.length === 0) {
+      console.warn("No headers found in excelData:", excelData);
+      // Puedes retornar un mensaje de error o un estado de "no data"
+      return <div>No hay datos de Excel disponibles o válidos.</div>;
+    }
+
     if (xAxisField && yAxisField) {
       // Obtener índices de las columnas seleccionadas
       const xIndex = excelData.headers.indexOf(xAxisField);
@@ -62,17 +69,29 @@ export const ChartRenderer = ({ component, excelData: propsExcelData }) => {
         const seriesGroups = {};
 
         // Primer paso: agrupar datos por categoría X
-        excelData.rows.forEach((row) => {
-          if (xIndex >= 0 && yIndex >= 0) {
-            const xValue = row[xIndex];
-            const yValue = Number(row[yIndex]) || 0;
-            const seriesValue = row[seriesIndex];
+        excelData.data.forEach((row) => {
+          if (
+            xIndex >= 0 &&
+            yIndex >= 0 &&
+            row[xIndex] !== undefined &&
+            row[yIndex] !== undefined
+          ) {
+            const xValue = row[xIndex] !== undefined ? row[xIndex] : "";
+            const formattedXValue = formatExcelValue(xValue);
 
-            if (!seriesGroups[xValue]) {
-              seriesGroups[xValue] = { name: xValue };
+            const yValue = !isNaN(Number(row[yIndex]))
+              ? Number(row[yIndex])
+              : 0;
+            let seriesValue = "";
+
+            if (seriesIndex >= 0 && row[seriesIndex] !== undefined) {
+              seriesValue = formatExcelValue(row[seriesIndex]);
             }
 
-            seriesGroups[xValue][seriesValue] = yValue;
+            if (!seriesGroups[formattedXValue]) {
+              seriesGroups[formattedXValue] = { name: formattedXValue };
+            }
+            seriesGroups[formattedXValue][seriesValue] = yValue;
           }
         });
 
@@ -80,14 +99,20 @@ export const ChartRenderer = ({ component, excelData: propsExcelData }) => {
         chartData = Object.values(seriesGroups);
       } else {
         // Procesar datos sin series
-        chartData = excelData.rows.map((row) => {
+        chartData = excelData.data.map((row) => {
           const item = {};
 
           // Obtener valores
-          item.name =
-            xIndex >= 0 ? row[xIndex] : `Item ${chartData.length + 1}`;
+          const rawXValue =
+            xIndex >= 0 && row[xIndex] !== undefined
+              ? row[xIndex]
+              : `Item ${chartData.length + 1}`;
+          item.name = formatExcelValue(rawXValue);
+
           item.value =
-            yIndex >= 0 && !isNaN(Number(row[yIndex]))
+            yIndex >= 0 &&
+            row[yIndex] !== undefined &&
+            !isNaN(Number(row[yIndex]))
               ? Number(row[yIndex])
               : 0;
 
