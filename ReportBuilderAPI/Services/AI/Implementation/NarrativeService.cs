@@ -1,9 +1,6 @@
 using System.Text.Json;
-using Azure;
 using Microsoft.Extensions.Options;
-using Azure.AI.OpenAI;
 using ReportBuilderAPI.Configuration;
-
 using ReportBuilderAPI.Services.AI.Interfaces;
 using ReportBuilderAPI.Services.AI.Models;
 
@@ -11,33 +8,52 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class NarrativeService : INarrativeService
     {
-        private readonly IDeepSeekService _deepSeekService;
+        private readonly IOllamaService _ollamaService;
         private readonly AISettings _settings;
         private readonly ILogger<NarrativeService> _logger;
 
-        public NarrativeService(IOptions<AISettings> settings, ILogger<NarrativeService> logger, IDeepSeekService deepSeekService)
+        public NarrativeService(
+            IOptions<AISettings> settings,
+            ILogger<NarrativeService> logger,
+            IOllamaService ollamaService)
         {
             _settings = settings.Value;
             _logger = logger;
-            _deepSeekService = deepSeekService;
+            _ollamaService = ollamaService;
         }
 
         public async Task<NarrativeResult> GenerateNarrativeAsync(NarrativeRequest request)
         {
-            try
+            // =========================================================================================
+            // CORRECCIÓN: Se elimina la segunda llamada a la IA.
+            // En lugar de pedirle a Ollama que genere una narrativa a partir del análisis,
+            // vamos a construir el resultado de la narrativa directamente desde el análisis ya hecho.
+            // Esto simplifica el flujo y es más robusto para modelos pequeños.
+            // =========================================================================================
+            _logger.LogInformation("Transformando AnalysisResult a NarrativeResult para TemplateId: {TemplateId}", request.TemplateId);
+
+            // Se asume que request.Analysis contiene el resultado del AnalyticsService
+            var analysis = request.Analysis;
+            if (analysis == null)
             {
-                _logger.LogInformation($"Generando narrativa con DeepSeek para TemplateId: {request.TemplateId}");
-                var prompt = BuildNarrativePrompt(request);
-                var response = await _deepSeekService.GenerateTextAsync(prompt); // Usamos DeepSeek
-                var narrativeResult = ParseNarrativeResponse(response);
-                _logger.LogInformation($"Narrativa generada para TemplateId: {request.TemplateId}");
-                return narrativeResult;
+                _logger.LogError("El objeto de análisis en la solicitud de narrativa es nulo.");
+                return new NarrativeResult { Title = "Error", Content = "No se proporcionó un análisis base." };
             }
-            catch (Exception ex)
+
+            var narrativeResult = new NarrativeResult
             {
-                _logger.LogError(ex, $"Error generando narrativa para TemplateId: {request.TemplateId}");
-                throw;
-            }
+                Title = analysis.Title ?? "Análisis de Datos",
+                Content = analysis.Summary ?? "No se generó un resumen.",
+                // Puedes mapear más campos si es necesario, por ejemplo, insights a keyPoints.
+                KeyPoints = analysis.Insights?.Select(i => i.Title ?? "Insight sin título").ToList() ?? new List<string>(),
+                Sections = new Dictionary<string, string> { { "Resumen Ejecutivo", analysis.Summary ?? "" } },
+                GeneratedAt = DateTime.UtcNow
+            };
+
+            _logger.LogInformation("Narrativa construida exitosamente para TemplateId: {TemplateId}", request.TemplateId);
+
+            // La tarea debe ser asíncrona para que coincida con la firma del método.
+            return await Task.FromResult(narrativeResult);
         }
 
         public async Task<IEnumerable<NarrativeTemplate>> GetTemplatesAsync()
@@ -53,10 +69,12 @@ namespace ReportBuilderAPI.Services.AI.Implementation
         {
             try
             {
-                _logger.LogInformation($"Personalizando narrativa ID: {request.NarrativeId}");
+                _logger.LogInformation("Personalizando narrativa ID: {NarrativeId} con Ollama", request.NarrativeId);
                 var prompt = BuildCustomizationPrompt(request);
-                var response = await _deepSeekService.GenerateTextAsync(prompt); // Usamos DeepSeek
-                return ParseNarrativeResponse(response);
+                var response = await _ollamaService.GenerateTextAsync(prompt);
+                var narrativeResult = ParseNarrativeResponse(response);
+                _logger.LogInformation("Narrativa ID: {NarrativeId} personalizada con éxito.", request.NarrativeId);
+                return narrativeResult;
             }
             catch (Exception ex)
             {
@@ -100,15 +118,36 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             return $@"
              Personaliza la narrativa existente con ID: {request.NarrativeId}.
              Modificaciones: {modificationsJson}, Revisor: {request.Reviewer}, Comentarios: {request.Comments}.
-             Mantén la estructura JSON.
-             ";
+             Mantén la estructura JSON.";
         }
 
         private NarrativeResult ParseNarrativeResponse(string response)
         {
+            if (string.IsNullOrWhiteSpace(response))
+            {
+                _logger.LogWarning("La respuesta para parsear la narrativa está vacía.");
+                return new NarrativeResult { Title = "Error de Formato", Content = "La respuesta del servicio estaba vacía." };
+            }
+
             try
             {
-                var jsonResponse = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(response);
+                // Limpiar la respuesta para obtener solo el JSON en caso de que el modelo agregue texto adicional.
+                var jsonStart = response.IndexOf('{');
+                var jsonEnd = response.LastIndexOf('}');
+                if (jsonStart == -1 || jsonEnd == -1 || jsonEnd < jsonStart)
+                {
+                    _logger.LogWarning("La respuesta del servicio no contenía un JSON válido: {response}", response);
+                    return new NarrativeResult { Title = "Error de Formato", Content = $"La respuesta del servicio no contenía un JSON válido: {response}" };
+                }
+                var jsonResponseStr = response.Substring(jsonStart, jsonEnd - jsonStart + 1);
+
+
+                var jsonResponse = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonResponseStr);
+                if (jsonResponse is null)
+                {
+                    _logger.LogWarning("La respuesta de la narrativa JSON se deserializó como nula. Respuesta original: {response}", response);
+                    return new NarrativeResult { Title = "Error de Deserialización", Content = "La respuesta del servicio no pudo ser procesada." };
+                }
                 return new NarrativeResult
                 {
                     Title = jsonResponse.TryGetValue("title", out var title) ? title.GetString() ?? "" : "",
@@ -121,7 +160,7 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error parseando respuesta de narrativa");
-                return new NarrativeResult { Title = "Reporte Generado", Content = "Contenido generado." };
+                return new NarrativeResult { Title = "Error de Parseo", Content = $"Ocurrió una excepción: {ex.Message}" };
             }
         }
 

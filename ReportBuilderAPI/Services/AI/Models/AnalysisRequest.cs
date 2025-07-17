@@ -10,8 +10,14 @@ namespace ReportBuilderAPI.Services.AI.Models
     public class AnalysisRequest
     {
         [JsonPropertyName("Data")]
-        public List<List<object>> Data { get; set; }
+        public List<List<object>> Data { get; set; } = new List<List<object>>();
+
+        public AnalysisRequest()
+        {
+            Config = new AIConfiguration();
+        }
+
         [JsonPropertyName("Config")]
-        public AIConfiguration Config { get; set; }
+        public AIConfiguration Config { get; set; } = new AIConfiguration();
     }
 }
