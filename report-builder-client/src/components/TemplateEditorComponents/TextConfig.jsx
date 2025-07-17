@@ -17,8 +17,9 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
   const [error, setError] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
+  const [hasAutoAnalyzed, setHasAutoAnalyzed] = useState(false); // Nuevo estado para evitar bucles
   const [aiConfig, setAiConfig] = useState({
-    analysisType: "comprehensive", // comprehensive, narrative, charts, kpis, trends
+    analysisType: "comprehensive",
     includeCharts: true,
     includeKPIs: true,
     includeTrends: true,
@@ -29,12 +30,13 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     tone: "professional",
   });
 
+  // Efecto para manejar columnas de Excel
   useEffect(() => {
     if (!sectionData || !sectionData.excelData) {
       console.log(
         "useEffect: No se encontró sectionData o sectionData.excelData."
       );
-      setExcelColumns([]); // Limpiar columnas si no hay datos
+      setExcelColumns([]);
       return;
     }
 
@@ -60,28 +62,46 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         sectionData: sectionData,
       });
     }
-  }, [sectionData]); // La dependencia es correcta
+  }, [sectionData]);
 
-  // Nuevo useEffect para disparar el análisis automático con AI
+  // Efecto para análisis automático - CORREGIDO para evitar bucles infinitos
   useEffect(() => {
-    // Se activa si la opción está marcada, hay datos, no se está analizando ya y no hay resultados previos.
+    // Solo ejecutar si:
+    // 1. El análisis automático está activado
+    // 2. Hay datos para analizar
+    // 3. No se está analizando actualmente
+    // 4. No se ha ejecutado el análisis automático para estos datos
+    // 5. No hay resultados previos o los datos han cambiado
     if (
       component.autoAnalyzeAI &&
       hasDataForAnalysis() &&
       !isAnalyzing &&
+      !hasAutoAnalyzed &&
       !analysisResults
     ) {
-      console.log("Activado análisis automático con AI...");
+      console.log("Activando análisis automático con AI...");
+      setHasAutoAnalyzed(true); // Marcar que ya se ejecutó
       handleAIAnalysis();
     }
-    // Las dependencias aseguran que se ejecute solo cuando cambien los datos o la configuración de auto-análisis.
-  }, [sectionData, component.autoAnalyzeAI, isAnalyzing, analysisResults]);
+  }, [sectionData?.excelData, component.autoAnalyzeAI]); // Dependencias más específicas
 
-  //Refactorizamos el manejador de análisis para orquestar los servicios
+  // Resetear el flag cuando cambian los datos
+  useEffect(() => {
+    if (sectionData?.excelData) {
+      setHasAutoAnalyzed(false);
+      setAnalysisResults(null); // Limpiar resultados previos
+    }
+  }, [sectionData?.excelData?.data]); // Solo cuando cambian los datos realmente
+
+  // Manejador de análisis mejorado
   const handleAIAnalysis = async () => {
+    if (isAnalyzing) {
+      console.log("Análisis ya en progreso, ignorando solicitud duplicada");
+      return;
+    }
+
     setIsAnalyzing(true);
     setError(null);
-    setAnalysisResults(null);
 
     try {
       const dataToAnalyze = sectionData?.excelData;
@@ -93,11 +113,8 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         throw new Error("No hay datos de Excel disponibles para el análisis.");
       }
 
-      // Paso 1: Llamar al servicio de análisis. Este es el análisis base.
       console.log("Iniciando análisis de datos...");
 
-      // CORRECCIÓN: Creamos un único objeto de solicitud que coincida con el DTO del backend.
-      // Esto hace que el "contrato" entre frontend y backend sea explícito y claro.
       const requestPayload = {
         Data: dataToAnalyze.data,
         Config: aiConfig,
@@ -106,48 +123,42 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
       const baseAnalysis = await analyzeExcelData(requestPayload);
       console.log("Análisis base recibido:", baseAnalysis);
 
-      // Preparamos el objeto de resultados finales
+      // Preparar resultados finales con mejor manejo de datos
       const finalResults = {
         narrative: null,
-        // El modelo AnalysisResult no tiene 'charts', lo inicializamos vacío.
-        // Si quieres esta funcionalidad, debes añadir la propiedad 'Charts' a la clase AnalysisResult en C#.
-        charts: baseAnalysis.charts || [],
-        // CORRECCIÓN: Mapeamos desde 'metrics' (backend) en lugar de 'keyMetrics' (frontend)
-        kpis: baseAnalysis.metrics
-          ? Object.entries(baseAnalysis.metrics).map(([key, value]) => ({
-              name: key,
-              value: String(value), // Convertimos a string para una visualización segura
-            }))
-          : [],
-        // CORRECCIÓN: Mapeamos la descripción de cada objeto 'trend' para mostrarla
-        trends:
-          baseAnalysis.trends?.map(
-            (t) => `${t.metric} tiene una tendencia ${t.direction}`
-          ) || [],
-        // CORRECCIÓN: Mapeamos la descripción de cada 'insight' como una sugerencia
-        suggestions: baseAnalysis.insights?.map((i) => i.description) || [],
-        confidence: baseAnalysis.insights?.[0]?.confidence || 0.8, // Usamos la confianza del primer insight como referencia
+        charts: baseAnalysis.charts || baseAnalysis.Charts || [],
+        kpis: mapKPIs(baseAnalysis),
+        trends: mapTrends(baseAnalysis),
+        suggestions: mapSuggestions(baseAnalysis),
+        confidence: getConfidence(baseAnalysis),
       };
 
-      // Paso 2: Si se solicita una narrativa, llamar al servicio de narrativa
+      // Generar narrativa si se solicita
       if (aiConfig.includeNarrative) {
         console.log("Generando narrativa a partir del análisis...");
-        // Pasamos el resultado del análisis anterior para generar el texto
-        const narrativeResult = await generateNarrativeFromAnalysis(
-          // 2. CORRECCIÓN: Pasamos aiConfig para que se use el idioma y tono correctos
-          baseAnalysis,
-          aiConfig
-        );
-        finalResults.narrative = narrativeResult.narrative;
-        console.log("Narrativa generada:", narrativeResult.narrative);
-      }
+        try {
+          const narrativeResult = await generateNarrativeFromAnalysis(
+            baseAnalysis,
+            aiConfig
+          );
 
-      // (Aquí se podrían añadir llamadas a otros servicios para tendencias, etc., si fuera necesario)
+          if (narrativeResult && narrativeResult.content) {
+            finalResults.narrative = narrativeResult;
+            console.log("Narrativa generada exitosamente:", narrativeResult);
+          }
+        } catch (narrativeError) {
+          console.error("Error generando narrativa:", narrativeError);
+          finalResults.narrative = {
+            title: "Error generando narrativa",
+            content: `No se pudo generar la narrativa automáticamente. Error: ${narrativeError.message}`,
+            keyPoints: [],
+          };
+        }
+      }
 
       setAnalysisResults(finalResults);
 
-      // Aplicar resultados automáticamente si está configurado
-      // Si el análisis se disparó automáticamente, aplicamos los resultados también automáticamente.
+      // Aplicar resultados automáticamente solo si no es análisis manual
       if (component.autoAnalyzeAI) {
         applyAIResults(finalResults);
         console.log("Resultados de AI aplicados automáticamente.");
@@ -160,52 +171,122 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     }
   };
 
-  // Aplicar resultados de AI al componente
+  // Funciones auxiliares para mapear datos - NUEVAS
+  const mapKPIs = (analysis) => {
+    const metrics = analysis.metrics || analysis.Metrics;
+    if (!metrics) return [];
+
+    return Object.entries(metrics).map(([key, value]) => ({
+      name: key,
+      value: String(value),
+    }));
+  };
+
+  const mapTrends = (analysis) => {
+    const trends = analysis.trends || analysis.Trends;
+    if (!trends || !Array.isArray(trends)) return [];
+
+    return trends.map(
+      (t) =>
+        `${t.metric || t.Metric} tiene una tendencia ${
+          t.direction || t.Direction
+        }`
+    );
+  };
+
+  const mapSuggestions = (analysis) => {
+    const insights = analysis.insights || analysis.Insights;
+    if (!insights || !Array.isArray(insights)) return [];
+
+    return insights.map((i) => i.description || i.Description);
+  };
+
+  const getConfidence = (analysis) => {
+    const insights = analysis.insights || analysis.Insights;
+    if (!insights || !Array.isArray(insights) || insights.length === 0)
+      return 0.8;
+
+    return insights[0].confidence || insights[0].Confidence || 0.8;
+  };
+
+  // Aplicar resultados de AI - MEJORADO
   const applyAIResults = (results) => {
-    if (results.narrative) {
-      onUpdate("content", results.narrative);
+    console.log("Aplicando todos los resultados de AI:", results);
+
+    const updates = {};
+
+    // Aplicar narrativa
+    if (results.narrative && results.narrative.content) {
+      updates.content = results.narrative.content;
+      console.log(
+        "Narrativa preparada para aplicar:",
+        results.narrative.content
+      );
     }
 
-    if (results.charts?.length > 0) {
-      onUpdate("generatedCharts", results.charts);
+    // Aplicar otros resultados
+    if (results.charts && results.charts.length > 0) {
+      updates.generatedCharts = results.charts;
+      console.log("Gráficos preparados para aplicar:", results.charts);
     }
 
-    if (results.kpis?.length > 0) {
-      onUpdate("generatedKPIs", results.kpis);
+    if (results.kpis && results.kpis.length > 0) {
+      updates.generatedKPIs = results.kpis;
+      console.log("KPIs preparados para aplicar:", results.kpis);
     }
 
-    if (results.trends) {
-      onUpdate("generatedTrends", results.trends);
+    if (results.trends && results.trends.length > 0) {
+      updates.generatedTrends = results.trends;
+      console.log("Tendencias preparadas para aplicar:", results.trends);
     }
 
-    // Actualizar metadatos de AI
-    onUpdate("aiMetadata", {
+    // Metadatos
+    updates.aiMetadata = {
       lastAnalysis: new Date().toISOString(),
       analysisConfig: aiConfig,
       confidence: results.confidence || 0.8,
       suggestions: results.suggestions || [],
+    };
+
+    // Aplicar todas las actualizaciones de una vez
+    Object.entries(updates).forEach(([key, value]) => {
+      onUpdate(key, value);
     });
+
+    console.log("Todas las actualizaciones aplicadas:", updates);
   };
 
-  // Aplicar resultado específico
+  // Aplicar resultado específico - MEJORADO
   const applySpecificResult = (type, data) => {
+    console.log(`Aplicando resultado específico: ${type}`, data);
+
     switch (type) {
       case "narrative":
-        onUpdate("content", data);
+        if (data && data.content) {
+          onUpdate("content", data.content);
+          console.log("Narrativa aplicada al contenido:", data.content);
+        } else {
+          console.warn("No se pudo aplicar narrativa - datos inválidos:", data);
+        }
         break;
       case "charts":
         onUpdate("generatedCharts", data);
+        console.log("Gráficos aplicados:", data);
         break;
       case "kpis":
         onUpdate("generatedKPIs", data);
+        console.log("KPIs aplicados:", data);
         break;
       case "trends":
         onUpdate("generatedTrends", data);
+        console.log("Tendencias aplicadas:", data);
         break;
+      default:
+        console.warn("Tipo de resultado no reconocido:", type);
     }
   };
 
-  // Verificar si hay datos disponibles para análisis
+  // Verificar disponibilidad de datos
   const hasDataForAnalysis = () => {
     return (
       sectionData?.excelData?.data?.length > 0 ||
@@ -213,6 +294,24 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
       sectionData?.apiData?.length > 0
     );
   };
+
+  // Manejador para análisis manual
+  const handleManualAnalysis = () => {
+    setHasAutoAnalyzed(false); // Permitir re-análisis
+    setAnalysisResults(null);
+    handleAIAnalysis();
+  };
+
+  // Debug del estado del componente
+  useEffect(() => {
+    console.log("=== DEBUG: Estado del componente ===");
+    console.log("component.content:", component.content);
+    console.log("component.autoAnalyzeAI:", component.autoAnalyzeAI);
+    console.log("analysisResults:", analysisResults);
+    console.log("isAnalyzing:", isAnalyzing);
+    console.log("hasAutoAnalyzed:", hasAutoAnalyzed);
+    console.log("===================================");
+  }, [component, analysisResults, isAnalyzing, hasAutoAnalyzed]);
 
   return (
     <div className="space-y-6">
@@ -230,20 +329,25 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           gráficos, KPIs y tendencias.
         </p>
 
-        {/* Checkbox para controlar el análisis automático
+        {/* Checkbox para análisis automático */}
         <div className="mb-4">
           <label className="flex items-center text-sm text-gray-600 cursor-pointer">
             <input
               type="checkbox"
               checked={component.autoAnalyzeAI || false}
-              onChange={(e) => onUpdate("autoAnalyzeAI", e.target.checked)}
+              onChange={(e) => {
+                onUpdate("autoAnalyzeAI", e.target.checked);
+                if (e.target.checked) {
+                  setHasAutoAnalyzed(false); // Permitir nuevo análisis automático
+                }
+              }}
               className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
             Analizar automáticamente con AI al cargar nuevos datos
           </label>
-        </div> */}
+        </div>
 
-        {/* Panel de Configuración de AI reutilizado */}
+        {/* Panel de Configuración de AI */}
         <div className="mb-4">
           <AIConfigPanel
             config={aiConfig}
@@ -252,11 +356,11 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           />
         </div>
 
-        {/* Botón principal de análisis AI */}
+        {/* Botones de control */}
         <div className="flex gap-2">
           <button
             type="button"
-            onClick={handleAIAnalysis}
+            onClick={handleManualAnalysis}
             disabled={!hasDataForAnalysis() || isAnalyzing}
             className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-4 py-2 rounded hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
@@ -284,13 +388,15 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         </div>
 
         {error && (
-          <p className="text-sm text-red-600 mt-2 bg-red-50 p-2 rounded">
-            <strong>Error:</strong> {error}
-          </p>
+          <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded">
+            <p className="text-sm text-red-600">
+              <strong>Error:</strong> {error}
+            </p>
+          </div>
         )}
       </div>
 
-      {/* 3. La UI para mostrar resultados se mantiene, ahora alimentada por el nuevo flujo */}
+      {/* Resultados del análisis AI - MEJORADO */}
       {analysisResults && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
           <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
@@ -299,11 +405,12 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           </h4>
 
           <div className="space-y-3">
-            {analysisResults.narrative && (
+            {/* Narrativa */}
+            {analysisResults.narrative && analysisResults.narrative.content && (
               <div className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
                   <h5 className="font-medium text-gray-900">
-                    Narrativa Generada
+                    {analysisResults.narrative.title || "Narrativa Generada"}
                   </h5>
                   <button
                     onClick={() =>
@@ -312,17 +419,61 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                         analysisResults.narrative
                       )
                     }
-                    className="text-sm bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
+                    className="text-sm bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex-shrink-0"
                   >
                     Aplicar
                   </button>
                 </div>
-                <p className="text-sm text-gray-700 max-h-32 overflow-y-auto">
-                  {analysisResults.narrative}
-                </p>
+
+                <div className="text-sm text-gray-700 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
+                  {analysisResults.narrative.content}
+                </div>
+
+                {/* Puntos clave */}
+                {analysisResults.narrative.keyPoints &&
+                  analysisResults.narrative.keyPoints.length > 0 && (
+                    <div className="mt-3 pt-2 border-t">
+                      <h6 className="text-xs font-bold text-gray-600 uppercase mb-1">
+                        Puntos Clave
+                      </h6>
+                      <ul className="list-disc list-inside text-sm text-gray-600">
+                        {analysisResults.narrative.keyPoints.map(
+                          (point, index) => (
+                            <li key={index}>{point}</li>
+                          )
+                        )}
+                      </ul>
+                    </div>
+                  )}
+
+                {/* Secciones */}
+                {analysisResults.narrative.sections &&
+                  Object.keys(analysisResults.narrative.sections).length >
+                    0 && (
+                    <div className="mt-3 pt-2 border-t">
+                      <h6 className="text-xs font-bold text-gray-600 uppercase mb-1">
+                        Secciones
+                      </h6>
+                      <div className="space-y-2">
+                        {Object.entries(analysisResults.narrative.sections).map(
+                          ([sectionName, sectionContent], index) => (
+                            <div key={index} className="text-sm">
+                              <strong className="text-gray-800">
+                                {sectionName}:
+                              </strong>
+                              <div className="text-gray-600 mt-1">
+                                {sectionContent}
+                              </div>
+                            </div>
+                          )
+                        )}
+                      </div>
+                    </div>
+                  )}
               </div>
             )}
 
+            {/* Gráficos */}
             {analysisResults.charts && analysisResults.charts.length > 0 && (
               <div className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
@@ -348,6 +499,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
               </div>
             )}
 
+            {/* KPIs */}
             {analysisResults.kpis && analysisResults.kpis.length > 0 && (
               <div className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
@@ -374,7 +526,8 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
               </div>
             )}
 
-            {analysisResults.trends && (
+            {/* Tendencias */}
+            {analysisResults.trends && analysisResults.trends.length > 0 && (
               <div className="bg-white p-3 rounded border">
                 <div className="flex justify-between items-start mb-2">
                   <h5 className="font-medium text-gray-900">
@@ -389,12 +542,17 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                     Aplicar
                   </button>
                 </div>
-                <p className="text-sm text-gray-700">
-                  {analysisResults.trends.join(", ")}
-                </p>
+                <div className="text-sm text-gray-700">
+                  {analysisResults.trends.map((trend, index) => (
+                    <div key={index} className="mb-1">
+                      • {trend}
+                    </div>
+                  ))}
+                </div>
               </div>
             )}
 
+            {/* Sugerencias */}
             {analysisResults.suggestions &&
               analysisResults.suggestions.length > 0 && (
                 <div className="bg-blue-50 p-3 rounded border border-blue-200">
@@ -412,7 +570,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         </div>
       )}
 
-      {/* 4. Eliminamos la sección que renderizaba el NarrativeGenerator tradicional */}
+      {/* Sección de configuración tradicional */}
       <div className="border-t pt-4">
         <div>
           <label className="block text-sm font-medium mb-1">
@@ -547,7 +705,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         )}
       </div>
 
-      {/* Mostrar contenido generado por AI */}
+      {/* Indicadores de contenido generado */}
       {component.generatedCharts && component.generatedCharts.length > 0 && (
         <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
           <h4 className="font-semibold text-blue-900 mb-2">

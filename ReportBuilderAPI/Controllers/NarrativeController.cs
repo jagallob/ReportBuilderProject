@@ -3,6 +3,7 @@ using ReportBuilderAPI.Services.AI;
 using ReportBuilderAPI.Services.AI.Interfaces;
 using ReportBuilderAPI.Services.AI.Models;
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 
 namespace ReportBuilderAPI.Controllers
 {
@@ -40,7 +41,9 @@ namespace ReportBuilderAPI.Controllers
             {
                 _logger.LogInformation("Generando narrativa para template {TemplateId}", request.TemplateId);
                 var result = await _narrativeService.GenerateNarrativeAsync(request);
-                return Ok(result);
+                var json = System.Text.Json.JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+                return Content(json, "application/json");
+
             }
             catch (ValidationException ex)
             {

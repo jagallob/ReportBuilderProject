@@ -11,6 +11,10 @@ namespace ReportBuilderAPI.Services.AI.Models
         public List<Trend> Trends { get; set; } = new();
         public Dictionary<string, object> Metrics { get; set; } = new();
         public DateTime GeneratedAt { get; set; } = DateTime.UtcNow;
+        public List<string> Recommendations { get; internal set; } = new();
+        public string? Title { get; set; }
+        public object? KeyMetrics { get; set; }
+        public object? Narrative { get; set; }
     }
 
     public class Insight
@@ -70,5 +74,36 @@ namespace ReportBuilderAPI.Services.AI.Models
         public string Title { get; set; } = string.Empty;
         public string Content { get; set; } = string.Empty;
         public double RelevanceScore { get; set; }
+    }
+
+    // Modelos de respuesta de Ollama
+    public class OllamaGenerateResponse
+    {
+        [JsonPropertyName("response")]
+        public string Response { get; set; } = string.Empty;
+        [JsonPropertyName("done")]
+        public bool Done { get; set; }
+    }
+
+    public class OllamaEmbeddingResponse
+    {
+        [JsonPropertyName("embedding")]
+        public float[] Embedding { get; set; } = new float[0];
+    }
+
+    public class OllamaModelsResponse
+    {
+        [JsonPropertyName("models")]
+        public List<OllamaModel> Models { get; set; } = new();
+    }
+
+    public class OllamaModel
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("size")]
+        public string Size { get; set; } = string.Empty;
+        [JsonPropertyName("digest")]
+        public string Digest { get; set; } = string.Empty;
     }
 }

@@ -1,7 +1,5 @@
 using System.Text.Json;
-using Azure;
 using Microsoft.Extensions.Options;
-using Azure.AI.OpenAI;
 using ReportBuilderAPI.Configuration;
 using ReportBuilderAPI.Services.AI.Interfaces;
 using ReportBuilderAPI.Services.AI.Models;
@@ -10,13 +8,18 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class AnalyticsService : IAnalyticsService
     {
-        private readonly IDeepSeekService _deepSeekService; // Inyectamos el nuevo servicio
+        private readonly IOllamaService _ollamaService;
         private readonly AISettings _settings;
         private readonly ILogger<AnalyticsService> _logger;
 
-        public AnalyticsService(IOptions<AISettings> settings, ILogger<AnalyticsService> logger, IDeepSeekService deepSeekService) // Inyectamos en el constructor
+        public AnalyticsService(
+            IOptions<AISettings> settings,
+            ILogger<AnalyticsService> logger,
+            IOllamaService ollamaService
+            )
+
         {
-            _deepSeekService = deepSeekService;
+            _ollamaService = ollamaService;
             _settings = settings.Value;
             _logger = logger;
         }
@@ -27,9 +30,9 @@ namespace ReportBuilderAPI.Services.AI.Implementation
             {
                 // CORRECCIÓN: Se accede a las propiedades a través de request.Config.
                 // ReportId ya no forma parte de esta solicitud, por lo que se usa información más relevante para el log.
-                _logger.LogInformation("Iniciando análisis con DeepSeek de tipo: {AnalysisType}", request.Config.AnalysisType); // Mensaje actualizado
-                // Usamos DeepSeekService directamente
-                var analysisResult = await _deepSeekService.AnalyzeDataAsync(request);
+                _logger.LogInformation("Iniciando análisis con Ollama de tipo: {AnalysisType}", request.Config.AnalysisType);
+                // Usamos OllamaService directamente
+                var analysisResult = await _ollamaService.AnalyzeDataAsync(request);
                 _logger.LogInformation("Análisis de tipo '{AnalysisType}' completado.", request.Config.AnalysisType);
                 return analysisResult;
             }
@@ -56,7 +59,8 @@ namespace ReportBuilderAPI.Services.AI.Implementation
                         Confidence = 0.85
                     }
                 };
-                return await Task.FromResult(insights);
+                await Task.Yield();
+                return insights;
             }
             catch (Exception ex)
             {
@@ -80,7 +84,8 @@ namespace ReportBuilderAPI.Services.AI.Implementation
                         DataPoints = GenerateDataPoints(startDate, endDate)
                     }
                 };
-                return await Task.FromResult(trends);
+                await Task.Yield(); // Add await here
+                return trends;
             }
             catch (Exception ex)
             {
@@ -101,21 +106,18 @@ namespace ReportBuilderAPI.Services.AI.Implementation
                  Proporciona un análisis comparativo detallado incluyendo:
                  1. Diferencias principales
                  2. Tendencias identificadas
-                 3. Recomendaciones
-                 ";
-                // Esta parte aún usa OpenAI, si se quiere migrar, se debe usar DeepSeek
-                // var response = await _deepSeekService.GenerateTextAsync(prompt);
-                // return ParseAnalysisResponse(response, areaId);
+                 3. Recomendaciones";
+
                 _logger.LogWarning("ComparePeroidsAsync no está completamente migrado a DeepSeek.");
                 return new AnalysisResult { Summary = "Función no implementada con DeepSeek" };
             }
+
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error en comparación de períodos para AreaId: {areaId}");
                 throw;
             }
         }
-
         public async Task<bool> ProcessDataAsync(Dictionary<string, object> data)
         {
             try
