@@ -8,52 +8,37 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class NarrativeService : INarrativeService
     {
-        private readonly IOllamaService _ollamaService;
+        private readonly IAnthropicService _anthropicService;
         private readonly AISettings _settings;
         private readonly ILogger<NarrativeService> _logger;
 
         public NarrativeService(
             IOptions<AISettings> settings,
             ILogger<NarrativeService> logger,
-            IOllamaService ollamaService)
+            IAnthropicService anthropicService)
         {
             _settings = settings.Value;
             _logger = logger;
-            _ollamaService = ollamaService;
+            _anthropicService = anthropicService;
         }
 
         public async Task<NarrativeResult> GenerateNarrativeAsync(NarrativeRequest request)
         {
-            // =========================================================================================
-            // CORRECCIÓN: Se elimina la segunda llamada a la IA.
-            // En lugar de pedirle a Ollama que genere una narrativa a partir del análisis,
-            // vamos a construir el resultado de la narrativa directamente desde el análisis ya hecho.
-            // Esto simplifica el flujo y es más robusto para modelos pequeños.
-            // =========================================================================================
-            _logger.LogInformation("Transformando AnalysisResult a NarrativeResult para TemplateId: {TemplateId}", request.TemplateId);
-
-            // Se asume que request.Analysis contiene el resultado del AnalyticsService
-            var analysis = request.Analysis;
-            if (analysis == null)
+            try
             {
-                _logger.LogError("El objeto de análisis en la solicitud de narrativa es nulo.");
-                return new NarrativeResult { Title = "Error", Content = "No se proporcionó un análisis base." };
+                _logger.LogInformation("Generando narrativa con Anthropic para TemplateId: {TemplateId}", request.TemplateId);
+                
+                // Usar Anthropic para generar la narrativa
+                var narrativeResult = await _anthropicService.GenerateNarrativeAsync(request);
+                
+                _logger.LogInformation("Narrativa generada exitosamente para TemplateId: {TemplateId}", request.TemplateId);
+                return narrativeResult;
             }
-
-            var narrativeResult = new NarrativeResult
+            catch (Exception ex)
             {
-                Title = analysis.Title ?? "Análisis de Datos",
-                Content = analysis.Summary ?? "No se generó un resumen.",
-                // Puedes mapear más campos si es necesario, por ejemplo, insights a keyPoints.
-                KeyPoints = analysis.Insights?.Select(i => i.Title ?? "Insight sin título").ToList() ?? new List<string>(),
-                Sections = new Dictionary<string, string> { { "Resumen Ejecutivo", analysis.Summary ?? "" } },
-                GeneratedAt = DateTime.UtcNow
-            };
-
-            _logger.LogInformation("Narrativa construida exitosamente para TemplateId: {TemplateId}", request.TemplateId);
-
-            // La tarea debe ser asíncrona para que coincida con la firma del método.
-            return await Task.FromResult(narrativeResult);
+                _logger.LogError(ex, "Error generando narrativa con Anthropic");
+                return new NarrativeResult { Title = "Error", Content = $"Error generando narrativa: {ex.Message}" };
+            }
         }
 
         public async Task<IEnumerable<NarrativeTemplate>> GetTemplatesAsync()
@@ -69,9 +54,9 @@ namespace ReportBuilderAPI.Services.AI.Implementation
         {
             try
             {
-                _logger.LogInformation("Personalizando narrativa ID: {NarrativeId} con Ollama", request.NarrativeId);
+                _logger.LogInformation("Personalizando narrativa ID: {NarrativeId} con Anthropic", request.NarrativeId);
                 var prompt = BuildCustomizationPrompt(request);
-                var response = await _ollamaService.GenerateTextAsync(prompt);
+                var response = await _anthropicService.GenerateTextAsync(prompt);
                 var narrativeResult = ParseNarrativeResponse(response);
                 _logger.LogInformation("Narrativa ID: {NarrativeId} personalizada con éxito.", request.NarrativeId);
                 return narrativeResult;

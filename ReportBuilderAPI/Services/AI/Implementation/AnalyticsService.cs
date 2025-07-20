@@ -8,18 +8,18 @@ namespace ReportBuilderAPI.Services.AI.Implementation
 {
     public class AnalyticsService : IAnalyticsService
     {
-        private readonly IOllamaService _ollamaService;
+        private readonly IAnthropicService _anthropicService;
         private readonly AISettings _settings;
         private readonly ILogger<AnalyticsService> _logger;
 
         public AnalyticsService(
             IOptions<AISettings> settings,
             ILogger<AnalyticsService> logger,
-            IOllamaService ollamaService
+            IAnthropicService anthropicService
             )
 
         {
-            _ollamaService = ollamaService;
+            _anthropicService = anthropicService;
             _settings = settings.Value;
             _logger = logger;
         }
@@ -28,17 +28,14 @@ namespace ReportBuilderAPI.Services.AI.Implementation
         {
             try
             {
-                // CORRECCIÓN: Se accede a las propiedades a través de request.Config.
-                // ReportId ya no forma parte de esta solicitud, por lo que se usa información más relevante para el log.
-                _logger.LogInformation("Iniciando análisis con Ollama de tipo: {AnalysisType}", request.Config.AnalysisType);
-                // Usamos OllamaService directamente
-                var analysisResult = await _ollamaService.AnalyzeDataAsync(request);
+                _logger.LogInformation("Iniciando análisis con Anthropic de tipo: {AnalysisType}", request.Config.AnalysisType);
+                // Usamos AnthropicService directamente
+                var analysisResult = await _anthropicService.AnalyzeDataAsync(request);
                 _logger.LogInformation("Análisis de tipo '{AnalysisType}' completado.", request.Config.AnalysisType);
                 return analysisResult;
             }
             catch (Exception ex)
             {
-                // CORRECCIÓN: Se elimina la referencia a la propiedad inexistente ReportId.
                 _logger.LogError(ex, "Error durante el análisis de datos de Excel.");
                 throw;
             }

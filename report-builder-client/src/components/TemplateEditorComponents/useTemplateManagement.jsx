@@ -196,12 +196,12 @@ const useTemplateManagement = (initialTemplate) => {
     setSelectedItem(null);
   };
 
-  const handleFileUpload = (sectionIndex, event) => {
+  const handleFileUpload = async (sectionIndex, event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const data = new Uint8Array(e.target.result);
         const workbook = XLSX.read(data, { type: "array" });
@@ -264,6 +264,12 @@ const useTemplateManagement = (initialTemplate) => {
           headers: headers.length,
           dataRows: rows.length,
         });
+
+        // DESACTIVADO: Análisis automático con IA
+        // El análisis automático ahora se maneja desde el componente TextConfig
+        console.log(
+          "✅ Excel cargado correctamente - Análisis automático desactivado"
+        );
       } catch (error) {
         console.error("❌ Error al procesar Excel:", error);
         // Aquí podrías mostrar un mensaje de error al usuario

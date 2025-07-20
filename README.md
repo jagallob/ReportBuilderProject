@@ -27,29 +27,30 @@
 
 ### Capacidades de Inteligencia Artificial
 
-- **Análisis de Datos Automático**: Genera insights, tendencias y resúmenes ejecutivos a partir de los datos cargados.
-- **Generación de Narrativas**: Crea textos coherentes y profesionales para las secciones de los reportes.
+- **Generación de Narrativas Automática**: Crea textos coherentes y profesionales para las secciones de los reportes usando la API de Anthropic.
+- **Análisis de Datos Inteligente**: Genera insights y resúmenes ejecutivos a partir de los datos cargados.
 - **Búsqueda Semántica**: Permite buscar información dentro de los reportes por significado, no solo por palabras clave.
+- **Análisis de Consumo Metro**: Sistema especializado para análisis de datos de transporte público con narrativas automáticas.
 
 ---
 
 ## 🛠️ Stack Tecnológico
 
-| Área                  | Tecnología / Librería                              |
-| --------------------- | -------------------------------------------------- |
-| **Frontend**          | React 19, Vite, Tailwind CSS, Recharts             |
-| **Backend**           | ASP.NET Core 9.0                                   |
-| **Inteligencia IA**   | `Azure.AI.OpenAI` (GPT-4o, text-embedding-3-small) |
-| **Base de Datos**     | Entity Framework Core con PostgreSQL               |
-| **Autenticación**     | JWT Bearer Tokens                                  |
-| **Documentación API** | Swashbuckle (Swagger)                              |
+| Área                  | Tecnología / Librería                  |
+| --------------------- | -------------------------------------- |
+| **Frontend**          | React 19, Vite, Tailwind CSS, Recharts |
+| **Backend**           | ASP.NET Core 9.0                       |
+| **Inteligencia IA**   | Anthropic Claude API (Claude-3-Sonnet) |
+| **Base de Datos**     | Entity Framework Core con PostgreSQL   |
+| **Autenticación**     | JWT Bearer Tokens                      |
+| **Documentación API** | Swashbuckle (Swagger)                  |
 
 ---
 
 ## 🏛️ Arquitectura
 
 ```
-[Usuario] <-- navegador --> [React + Vite + Tailwind] <---> [API REST .NET] <---> [PostgreSQL]
+[Usuario] <-- navegador --> [React + Vite + Tailwind] <---> [API REST .NET] <---> [Anthropic API]
 ```
 
 ---
@@ -66,6 +67,17 @@
 2. **Configuración:**
 
    - Copia `appsettings.json` y ajusta la cadena de conexión y claves JWT según tu entorno.
+   - **Importante**: Configura tu clave de API de Anthropic en `appsettings.json`:
+
+   ```json
+   "Anthropic": {
+     "ApiKey": "tu-clave-de-api-aqui",
+     "Model": "claude-3-sonnet-20240229",
+     "MaxTokens": 4000,
+     "Temperature": 0.7,
+     "TimeoutSeconds": 60
+   }
+   ```
 
 3. **Migraciones y base de datos:**
 
@@ -109,7 +121,7 @@
 
 ## Configuración
 
-- **Backend:** Edita `ReportBuilderAPI/appsettings.json` para definir la cadena de conexión a PostgreSQL y los parámetros de JWT.
+- **Backend:** Edita `ReportBuilderAPI/appsettings.json` para definir la cadena de conexión a PostgreSQL, los parámetros de JWT y la clave de API de Anthropic.
 - **Frontend:** Si la URL de la API cambia, actualízala en los servicios de React (`src/services/`).
 
 ---
@@ -121,6 +133,28 @@
 3. **Editor de plantillas:** Crea y edita plantillas de informes de manera visual.
 4. **Carga de Excel:** Sube archivos Excel para alimentar los reportes.
 5. **Generación de reportes:** Descarga los informes en PDF o Word.
+6. **Generación de Narrativas:** Al cargar archivos Excel, el sistema automáticamente genera narrativas profesionales usando IA.
+
+---
+
+## Nuevas Funcionalidades
+
+### Generación Automática de Narrativas con IA
+
+El sistema ahora incluye generación automática de narrativas que se activa cuando cargas archivos Excel:
+
+- **Procesa datos Excel** automáticamente al cargarlos
+- **Genera narrativas profesionales** usando la API de Anthropic
+- **Crea secciones automáticas** en el informe con el análisis narrativo
+- **Proporciona insights automáticos** basados en patrones de datos
+- **Integra narrativas** directamente en el flujo de creación de informes
+
+### Flujo de Trabajo
+
+1. **Cargar Excel**: Sube un archivo Excel en el editor de plantillas
+2. **Análisis Automático**: El sistema analiza automáticamente los datos
+3. **Narrativa Generada**: Se crea una nueva sección con la narrativa del análisis
+4. **Informe Completo**: La narrativa se integra como parte del informe final
 
 ---
 
@@ -135,12 +169,16 @@ ReportBuilderProject/
 │   ├── Data/                   # Contexto de base de datos
 │   ├── DTOs/                   # Objetos de transferencia de datos
 │   ├── Services/               # Lógica de negocio
+│   │   └── AI/                 # Servicios de IA
+│   │       ├── Implementation/ # Implementaciones (Anthropic, etc.)
+│   │       └── Interfaces/     # Interfaces de servicios
 │   └── ...
 │
 └── report-builder-client/      # Frontend React
     ├── src/
     │   ├── components/         # Componentes reutilizables
-    │   ├── pages/              # Vistas principales (Login, Panel, Editor, etc.)
+    │   │   └── AI/            # Componentes de IA
+    │   ├── pages/              # Vistas principales
     │   ├── services/           # Llamadas a la API
     │   └── ...
     └── ...
@@ -159,23 +197,4 @@ ReportBuilderProject/
 - XLSX, html2canvas, html2pdf.js (exportación)
 - React Hot Toast, React Toastify (notificaciones)
 - Recharts (gráficas)
-
-### Backend
-
-- .NET 7
-- Entity Framework Core (PostgreSQL)
-- JWT Bearer Authentication
-- Swashbuckle/Swagger (documentación API)
-
----
-
-## Notas de Seguridad
-
-- **No compartas tu `appsettings.json` con claves sensibles en repositorios públicos.**
-- Cambia la clave JWT y las credenciales de la base de datos en producción.
-
----
-
-## Licencia
-
-MIT
+- Papa Parse (procesamiento CSV)

@@ -11,6 +11,16 @@ export const TextRenderer = ({ component, excelData }) => {
     // Contenido manual si está definido
     let baseContent = component.content || "";
 
+    // Debug: Log del contenido del componente
+    if (import.meta.env.DEV) {
+      console.log("🔍 TextRenderer - Componente:", {
+        content: baseContent ? `${baseContent.length} chars` : "vacío",
+        hasAnalysisResult: !!component.analysisResult,
+        hasAiMetadata: !!component.aiMetadata,
+        type: component.type,
+      });
+    }
+
     // Generar narrativa automática si está configurado y hay datos Excel
     const shouldGenerate =
       component.autoGenerate &&
@@ -93,8 +103,54 @@ export const TextRenderer = ({ component, excelData }) => {
   };
 
   return (
-    <div className="prose max-w-none whitespace-pre-line">
-      {content || "Sin contenido de texto"}
+    <div className="prose max-w-none">
+      {content ? (
+        <div>
+          <div className="whitespace-pre-line">{content}</div>
+
+          {/* Mostrar puntos clave si están disponibles */}
+          {component.analysisResult?.narrative?.keyPoints &&
+            component.analysisResult.narrative.keyPoints.length > 0 && (
+              <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded">
+                <h4 className="font-semibold text-gray-900 mb-2">
+                  Puntos Clave
+                </h4>
+                <ul className="list-disc list-inside text-sm text-gray-700 space-y-1">
+                  {component.analysisResult.narrative.keyPoints.map(
+                    (point, index) => (
+                      <li key={index}>{point}</li>
+                    )
+                  )}
+                </ul>
+              </div>
+            )}
+
+          {/* Mostrar secciones si están disponibles */}
+          {component.analysisResult?.narrative?.sections &&
+            Object.keys(component.analysisResult.narrative.sections).length >
+              0 && (
+              <div className="mt-4 space-y-3">
+                {Object.entries(
+                  component.analysisResult.narrative.sections
+                ).map(([sectionName, sectionContent], index) => (
+                  <div
+                    key={index}
+                    className="p-3 bg-gray-50 border border-gray-200 rounded"
+                  >
+                    <h4 className="font-semibold text-gray-900 mb-2 capitalize">
+                      {sectionName}
+                    </h4>
+                    <div className="text-sm text-gray-700">
+                      {sectionContent}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+        </div>
+      ) : (
+        <div className="text-gray-500 italic">Sin contenido de texto</div>
+      )}
     </div>
   );
 };
