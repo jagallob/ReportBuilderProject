@@ -1,153 +1,131 @@
 import { useEffect, useState } from "react";
 import {
   SparklesIcon,
-  ChartBarIcon,
   DocumentTextIcon,
-  ArrowTrendingUpIcon,
-  EyeIcon,
   CogIcon,
 } from "@heroicons/react/24/outline";
-import { analyzeExcelData } from "../../services/analysisService";
+import { analyzeData } from "../../services/analysisService";
 import { generateNarrativeFromAnalysis } from "../../services/narrativeService";
+import { getDefaultAIConfig, isFeatureEnabled } from "../../utils/featureFlags";
 import AIConfigPanel from "../AI/AIConfigPanel";
 
-const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
+const TextConfig = ({ component = {}, onUpdate, sectionData = {} }) => {
   const [excelColumns, setExcelColumns] = useState([]);
   const [showAdvancedConfig, setShowAdvancedConfig] = useState(false);
   const [error, setError] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResults, setAnalysisResults] = useState(null);
-  const [hasAutoAnalyzed, setHasAutoAnalyzed] = useState(false); // Nuevo estado para evitar bucles
-  const [aiConfig, setAiConfig] = useState({
-    analysisType: "comprehensive",
-    includeCharts: true,
-    includeKPIs: true,
-    includeTrends: true,
-    includeNarrative: true,
-    chartTypes: ["bar", "line", "pie"],
-    kpiTypes: ["sum", "avg", "max", "min", "count"],
-    language: "es",
-    tone: "professional",
-  });
+  const [hasAutoAnalyzed, setHasAutoAnalyzed] = useState(false);
+  const [analysisInProgress, setAnalysisInProgress] = useState(false);
+  const [aiConfig, setAiConfig] = useState(getDefaultAIConfig());
 
   // Efecto para manejar columnas de Excel
   useEffect(() => {
     if (!sectionData || !sectionData.excelData) {
-      console.log(
-        "useEffect: No se encontró sectionData o sectionData.excelData."
-      );
       setExcelColumns([]);
       return;
     }
-
-    console.log("sectionData recibido:", sectionData);
-    console.log("Datos de Excel (data array):", sectionData?.excelData?.data);
-    console.log(
-      "Número de filas de datos:",
-      sectionData?.excelData?.data?.length
-    );
-    console.log("Headers de Excel:", sectionData?.excelData?.headers);
 
     if (
       sectionData?.excelData?.headers &&
       Array.isArray(sectionData.excelData.headers)
     ) {
-      console.log(
-        "Headers de Excel encontrados:",
-        sectionData.excelData.headers
-      );
       setExcelColumns(sectionData.excelData.headers);
-    } else {
-      console.warn("No se encontraron headers de Excel en sectionData", {
-        sectionData: sectionData,
-      });
     }
   }, [sectionData]);
 
-  // Efecto para análisis automático - CORREGIDO para evitar bucles infinitos
+  // Efecto para análisis automático - Versión corregida
   useEffect(() => {
-    // Solo ejecutar si:
-    // 1. El análisis automático está activado
-    // 2. Hay datos para analizar
-    // 3. No se está analizando actualmente
-    // 4. No se ha ejecutado el análisis automático para estos datos
-    // 5. No hay resultados previos o los datos han cambiado
+    // Si ya hay un análisis automático ejecutado, no ejecutar otro
+    if (component?.hasAutoAnalyzed === true || component?.analysisResult) {
+      setHasAutoAnalyzed(true);
+      if (component?.analysisResult && !analysisResults) {
+        setAnalysisResults(component.analysisResult);
+      }
+      return;
+    }
+
+    // Solo proceder si el componente está inicializado y tiene datos
     if (
-      component.autoAnalyzeAI &&
+      component &&
+      component.autoAnalyzeAI === true &&
       hasDataForAnalysis() &&
       !isAnalyzing &&
       !hasAutoAnalyzed &&
       !analysisResults
     ) {
-      console.log("Activando análisis automático con AI...");
-      setHasAutoAnalyzed(true); // Marcar que ya se ejecutó
+      console.log("🤖 Iniciando análisis automático...");
       handleAIAnalysis();
     }
-  }, [sectionData?.excelData, component.autoAnalyzeAI]); // Dependencias más específicas
+  }, [component?.autoAnalyzeAI, sectionData?.excelData?.data]);
 
   // Resetear el flag cuando cambian los datos
   useEffect(() => {
-    if (sectionData?.excelData) {
+    if (sectionData?.excelData?.data) {
       setHasAutoAnalyzed(false);
-      setAnalysisResults(null); // Limpiar resultados previos
+      setAnalysisResults(null);
     }
-  }, [sectionData?.excelData?.data]); // Solo cuando cambian los datos realmente
+  }, [sectionData?.excelData?.data]);
 
-  // Manejador de análisis mejorado
+  const hasDataForAnalysis = () => {
+    const hasExcelData = sectionData?.excelData?.data?.length > 0;
+    const hasPowerBIData = sectionData?.powerBIData?.length > 0;
+    const hasApiData = sectionData?.apiData?.length > 0;
+
+    return hasExcelData || hasPowerBIData || hasApiData;
+  };
+
   const handleAIAnalysis = async () => {
-    if (isAnalyzing) {
-      console.log("Análisis ya en progreso, ignorando solicitud duplicada");
+    if (isAnalyzing || hasAutoAnalyzed || analysisInProgress) {
+      console.log("⚠️ Análisis ya en progreso o completado, saltando...");
+      return;
+    }
+
+    if (!hasDataForAnalysis()) {
+      console.log("⚠️ No hay datos para analizar");
       return;
     }
 
     setIsAnalyzing(true);
+    setAnalysisInProgress(true);
     setError(null);
 
     try {
       const dataToAnalyze = sectionData?.excelData;
-      if (
-        !dataToAnalyze ||
-        !dataToAnalyze.data ||
-        dataToAnalyze.data.length === 0
-      ) {
-        throw new Error("No hay datos de Excel disponibles para el análisis.");
+      if (!dataToAnalyze?.data?.length) {
+        throw new Error("No hay datos disponibles para el análisis.");
       }
 
-      console.log("Iniciando análisis de datos...");
+      console.log("🔍 Analizando datos para narrativa...");
 
-      const requestPayload = {
-        Data: dataToAnalyze.data,
-        Config: aiConfig,
-      };
+      // Usar los servicios originales que sabemos que funcionan
+      const baseAnalysis = await analyzeData(dataToAnalyze.data, aiConfig);
 
-      const baseAnalysis = await analyzeExcelData(requestPayload);
-      console.log("Análisis base recibido:", baseAnalysis);
-
-      // Preparar resultados finales con mejor manejo de datos
       const finalResults = {
         narrative: null,
-        charts: baseAnalysis.charts || baseAnalysis.Charts || [],
-        kpis: mapKPIs(baseAnalysis),
-        trends: mapTrends(baseAnalysis),
-        suggestions: mapSuggestions(baseAnalysis),
-        confidence: getConfidence(baseAnalysis),
+        suggestions: baseAnalysis.suggestions || [],
+        confidence: baseAnalysis.confidence || 0.8,
+        metadata: {
+          analysisType: aiConfig.analysisType,
+          language: aiConfig.language,
+          tone: aiConfig.tone,
+          timestamp: new Date().toISOString(),
+        },
       };
 
-      // Generar narrativa si se solicita
+      // Generar narrativa si está habilitada
       if (aiConfig.includeNarrative) {
-        console.log("Generando narrativa a partir del análisis...");
         try {
           const narrativeResult = await generateNarrativeFromAnalysis(
             baseAnalysis,
-            aiConfig
+            aiConfig,
+            dataToAnalyze.data
           );
-
-          if (narrativeResult && narrativeResult.content) {
+          if (narrativeResult?.content) {
             finalResults.narrative = narrativeResult;
-            console.log("Narrativa generada exitosamente:", narrativeResult);
           }
         } catch (narrativeError) {
-          console.error("Error generando narrativa:", narrativeError);
+          console.error("❌ Error generando narrativa:", narrativeError);
           finalResults.narrative = {
             title: "Error generando narrativa",
             content: `No se pudo generar la narrativa automáticamente. Error: ${narrativeError.message}`,
@@ -158,86 +136,135 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
 
       setAnalysisResults(finalResults);
 
-      // Aplicar resultados automáticamente solo si no es análisis manual
-      if (component.autoAnalyzeAI) {
+      // Guardar los resultados en el componente para persistencia
+      onUpdate("analysisResult", finalResults);
+      onUpdate("hasAutoAnalyzed", true);
+
+      // Aplicar automáticamente los resultados
+      if (
+        component &&
+        (component.autoAnalyzeAI === true ||
+          component.autoAnalyzeAI === undefined)
+      ) {
         applyAIResults(finalResults);
-        console.log("Resultados de AI aplicados automáticamente.");
       }
     } catch (error) {
-      console.error("Error en análisis AI:", error);
+      console.error("❌ Error en análisis AI:", error);
       setError(error.message);
+      setHasAutoAnalyzed(false);
     } finally {
       setIsAnalyzing(false);
+      setAnalysisInProgress(false);
     }
   };
 
-  // Funciones auxiliares para mapear datos - NUEVAS
-  const mapKPIs = (analysis) => {
-    const metrics = analysis.metrics || analysis.Metrics;
-    if (!metrics) return [];
-
-    return Object.entries(metrics).map(([key, value]) => ({
-      name: key,
-      value: String(value),
-    }));
-  };
-
-  const mapTrends = (analysis) => {
-    const trends = analysis.trends || analysis.Trends;
-    if (!trends || !Array.isArray(trends)) return [];
-
-    return trends.map(
-      (t) =>
-        `${t.metric || t.Metric} tiene una tendencia ${
-          t.direction || t.Direction
-        }`
-    );
-  };
-
-  const mapSuggestions = (analysis) => {
-    const insights = analysis.insights || analysis.Insights;
-    if (!insights || !Array.isArray(insights)) return [];
-
-    return insights.map((i) => i.description || i.Description);
-  };
-
-  const getConfidence = (analysis) => {
-    const insights = analysis.insights || analysis.Insights;
-    if (!insights || !Array.isArray(insights) || insights.length === 0)
-      return 0.8;
-
-    return insights[0].confidence || insights[0].Confidence || 0.8;
-  };
-
-  // Aplicar resultados de AI - MEJORADO
+  // Aplicar resultados de AI - SIMPLIFICADO
   const applyAIResults = (results) => {
-    console.log("Aplicando todos los resultados de AI:", results);
+    if (!results) {
+      console.warn("❌ No hay resultados para aplicar");
+      return;
+    }
 
     const updates = {};
 
     // Aplicar narrativa
     if (results.narrative && results.narrative.content) {
-      updates.content = results.narrative.content;
+      let cleanContent = results.narrative.content;
+
       console.log(
-        "Narrativa preparada para aplicar:",
-        results.narrative.content
+        "🔍 Contenido original:",
+        cleanContent.substring(0, 200) + "..."
       );
-    }
 
-    // Aplicar otros resultados
-    if (results.charts && results.charts.length > 0) {
-      updates.generatedCharts = results.charts;
-      console.log("Gráficos preparados para aplicar:", results.charts);
-    }
+      // Limpiar contenido JSON si es necesario
+      if (cleanContent) {
+        try {
+          // Caso 1: Array con objeto que contiene JSON como string
+          if (
+            cleanContent.startsWith("[{") &&
+            cleanContent.includes('"text"')
+          ) {
+            const jsonArray = JSON.parse(cleanContent);
+            if (jsonArray.length > 0 && jsonArray[0].text) {
+              let textContent = jsonArray[0].text;
 
-    if (results.kpis && results.kpis.length > 0) {
-      updates.generatedKPIs = results.kpis;
-      console.log("KPIs preparados para aplicar:", results.kpis);
-    }
+              // Si el text contiene JSON dentro de markdown
+              if (textContent.includes("```json")) {
+                const jsonMatch = textContent.match(
+                  /```json\s*(\{[\s\S]*?\})\s*```/
+                );
+                if (jsonMatch) {
+                  const jsonContent = JSON.parse(jsonMatch[1]);
+                  cleanContent =
+                    jsonContent.content || jsonContent.text || textContent;
+                  console.log(
+                    "✅ Caso 1 - Array con JSON en markdown procesado"
+                  );
+                }
+              } else if (
+                textContent.startsWith("{") &&
+                textContent.endsWith("}")
+              ) {
+                // Si el text es JSON directo
+                const jsonContent = JSON.parse(textContent);
+                cleanContent =
+                  jsonContent.content || jsonContent.text || textContent;
+                console.log("✅ Caso 1.2 - Array con JSON directo procesado");
+              } else {
+                // Si el text es texto plano
+                cleanContent = textContent;
+                console.log("✅ Caso 1.3 - Array con texto plano procesado");
+              }
+            }
+          }
+          // Caso 2: JSON dentro de markdown
+          else if (cleanContent.includes("```json")) {
+            const jsonMatch = cleanContent.match(
+              /```json\s*(\{[\s\S]*?\})\s*```/
+            );
+            if (jsonMatch) {
+              const jsonContent = JSON.parse(jsonMatch[1]);
+              cleanContent =
+                jsonContent.content || jsonContent.text || cleanContent;
+              console.log("✅ Caso 2 - JSON en markdown procesado");
+            }
+          }
+          // Caso 3: JSON directo
+          else if (cleanContent.startsWith("{") && cleanContent.endsWith("}")) {
+            const jsonContent = JSON.parse(cleanContent);
+            cleanContent =
+              jsonContent.content || jsonContent.text || cleanContent;
+            console.log("✅ Caso 3 - JSON directo procesado");
+          }
+          // Caso 4: Array de objetos JSON (formato antiguo)
+          else if (
+            cleanContent.startsWith("[{") &&
+            cleanContent.endsWith("}]")
+          ) {
+            const jsonArray = JSON.parse(cleanContent);
+            if (jsonArray.length > 0 && jsonArray[0].text) {
+              cleanContent = jsonArray[0].text;
+              console.log("✅ Caso 4 - Array JSON procesado");
+            }
+          }
+        } catch (error) {
+          console.warn("⚠️ Error parseando contenido JSON:", error);
+          console.log(
+            "🔍 Contenido que causó error:",
+            cleanContent.substring(0, 200) + "..."
+          );
+        }
+      }
 
-    if (results.trends && results.trends.length > 0) {
-      updates.generatedTrends = results.trends;
-      console.log("Tendencias preparadas para aplicar:", results.trends);
+      console.log(
+        "🔍 Contenido limpio:",
+        cleanContent.substring(0, 200) + "..."
+      );
+      updates.content = cleanContent;
+      console.log(
+        "📝 Narrativa aplicada:",
+        cleanContent.substring(0, 100) + "..."
+      );
     }
 
     // Metadatos
@@ -246,6 +273,7 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
       analysisConfig: aiConfig,
       confidence: results.confidence || 0.8,
       suggestions: results.suggestions || [],
+      metadata: results.metadata,
     };
 
     // Aplicar todas las actualizaciones de una vez
@@ -253,46 +281,26 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
       onUpdate(key, value);
     });
 
-    console.log("Todas las actualizaciones aplicadas:", updates);
+    console.log("✅ Análisis AI completado y aplicado");
   };
 
-  // Aplicar resultado específico - MEJORADO
+  // Aplicar resultado específico - SIMPLIFICADO
   const applySpecificResult = (type, data) => {
-    console.log(`Aplicando resultado específico: ${type}`, data);
+    if (!data) {
+      console.warn(`❌ No hay datos para aplicar en tipo: ${type}`);
+      return;
+    }
 
     switch (type) {
       case "narrative":
-        if (data && data.content) {
+        if (data.content) {
           onUpdate("content", data.content);
-          console.log("Narrativa aplicada al contenido:", data.content);
-        } else {
-          console.warn("No se pudo aplicar narrativa - datos inválidos:", data);
+          console.log("📝 Narrativa aplicada manualmente");
         }
         break;
-      case "charts":
-        onUpdate("generatedCharts", data);
-        console.log("Gráficos aplicados:", data);
-        break;
-      case "kpis":
-        onUpdate("generatedKPIs", data);
-        console.log("KPIs aplicados:", data);
-        break;
-      case "trends":
-        onUpdate("generatedTrends", data);
-        console.log("Tendencias aplicadas:", data);
-        break;
       default:
-        console.warn("Tipo de resultado no reconocido:", type);
+        console.warn("❌ Tipo de resultado no reconocido:", type);
     }
-  };
-
-  // Verificar disponibilidad de datos
-  const hasDataForAnalysis = () => {
-    return (
-      sectionData?.excelData?.data?.length > 0 ||
-      sectionData?.powerBIData?.length > 0 ||
-      sectionData?.apiData?.length > 0
-    );
   };
 
   // Manejador para análisis manual
@@ -302,16 +310,24 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
     handleAIAnalysis();
   };
 
-  // Debug del estado del componente
+  // Debug del estado del componente - Solo en desarrollo
   useEffect(() => {
-    console.log("=== DEBUG: Estado del componente ===");
-    console.log("component.content:", component.content);
-    console.log("component.autoAnalyzeAI:", component.autoAnalyzeAI);
-    console.log("analysisResults:", analysisResults);
-    console.log("isAnalyzing:", isAnalyzing);
-    console.log("hasAutoAnalyzed:", hasAutoAnalyzed);
-    console.log("===================================");
-  }, [component, analysisResults, isAnalyzing, hasAutoAnalyzed]);
+    if (import.meta.env.DEV) {
+      console.log("🔍 Estado:", {
+        content: component.content
+          ? `${component.content.length} chars`
+          : "vacío",
+        analyzing: isAnalyzing,
+        hasData: hasDataForAnalysis(),
+        features: {
+          narrative: isFeatureEnabled("NARRATIVE"),
+          charts: isFeatureEnabled("CHARTS"),
+          kpis: isFeatureEnabled("KPIS"),
+          trends: isFeatureEnabled("TRENDS"),
+        },
+      });
+    }
+  }, [component.content, isAnalyzing]);
 
   return (
     <div className="space-y-6">
@@ -320,30 +336,24 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         <div className="flex items-center gap-2 mb-3">
           <SparklesIcon className="h-5 w-5 text-blue-600" />
           <h3 className="font-semibold text-gray-900">
-            Análisis Inteligente con AI
+            Generación Inteligente de Narrativa
           </h3>
         </div>
 
-        <p className="text-sm text-gray-600 mb-4">
-          Usa AI para analizar automáticamente tus datos y generar narrativas,
-          gráficos, KPIs y tendencias.
-        </p>
-
-        {/* Checkbox para análisis automático */}
+        {/* Checkbox para análisis automático - Versión corregida */}
         <div className="mb-4">
           <label className="flex items-center text-sm text-gray-600 cursor-pointer">
             <input
               type="checkbox"
-              checked={component.autoAnalyzeAI || false}
+              checked={component.autoAnalyzeAI ?? false}
               onChange={(e) => {
                 onUpdate("autoAnalyzeAI", e.target.checked);
-                if (e.target.checked) {
-                  setHasAutoAnalyzed(false); // Permitir nuevo análisis automático
-                }
+                setHasAutoAnalyzed(false);
+                setAnalysisResults(null);
               }}
               className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
             />
-            Analizar automáticamente con AI al cargar nuevos datos
+            Generar narrativa automáticamente con AI al cargar nuevos datos
           </label>
         </div>
 
@@ -367,12 +377,12 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
             {isAnalyzing ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Analizando...
+                Generando...
               </>
             ) : (
               <>
                 <SparklesIcon className="h-4 w-4" />
-                Analizar con AI
+                Generar Narrativa con AI
               </>
             )}
           </button>
@@ -396,12 +406,12 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
         )}
       </div>
 
-      {/* Resultados del análisis AI - MEJORADO */}
+      {/* Resultados del análisis AI - SIMPLIFICADO */}
       {analysisResults && (
         <div className="bg-green-50 p-4 rounded-lg border border-green-200">
           <h4 className="font-semibold text-green-900 mb-3 flex items-center gap-2">
             <SparklesIcon className="h-5 w-5" />
-            Resultados del Análisis AI
+            Narrativa Generada por AI
           </h4>
 
           <div className="space-y-3">
@@ -473,85 +483,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
               </div>
             )}
 
-            {/* Gráficos */}
-            {analysisResults.charts && analysisResults.charts.length > 0 && (
-              <div className="bg-white p-3 rounded border">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-medium text-gray-900">
-                    Gráficos Sugeridos ({analysisResults.charts.length})
-                  </h5>
-                  <button
-                    onClick={() =>
-                      applySpecificResult("charts", analysisResults.charts)
-                    }
-                    className="text-sm bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-                <div className="text-sm text-gray-600">
-                  {analysisResults.charts.map((chart, index) => (
-                    <div key={index} className="mb-1">
-                      • {chart.type}: {chart.title}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* KPIs */}
-            {analysisResults.kpis && analysisResults.kpis.length > 0 && (
-              <div className="bg-white p-3 rounded border">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-medium text-gray-900">
-                    KPIs Identificados ({analysisResults.kpis.length})
-                  </h5>
-                  <button
-                    onClick={() =>
-                      applySpecificResult("kpis", analysisResults.kpis)
-                    }
-                    className="text-sm bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {analysisResults.kpis.map((kpi, index) => (
-                    <div key={index} className="bg-gray-50 p-2 rounded">
-                      <div className="font-medium">{kpi.name}</div>
-                      <div className="text-gray-600">{kpi.value}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Tendencias */}
-            {analysisResults.trends && analysisResults.trends.length > 0 && (
-              <div className="bg-white p-3 rounded border">
-                <div className="flex justify-between items-start mb-2">
-                  <h5 className="font-medium text-gray-900">
-                    Tendencias Detectadas
-                  </h5>
-                  <button
-                    onClick={() =>
-                      applySpecificResult("trends", analysisResults.trends)
-                    }
-                    className="text-sm bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700"
-                  >
-                    Aplicar
-                  </button>
-                </div>
-                <div className="text-sm text-gray-700">
-                  {analysisResults.trends.map((trend, index) => (
-                    <div key={index} className="mb-1">
-                      • {trend}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             {/* Sugerencias */}
             {analysisResults.suggestions &&
               analysisResults.suggestions.length > 0 && (
@@ -566,9 +497,77 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
                   </ul>
                 </div>
               )}
+
+            {/* Metadatos del análisis */}
+            {analysisResults.metadata && (
+              <div className="bg-gray-50 p-3 rounded border">
+                <h5 className="font-medium text-gray-900 mb-2">
+                  Información del Análisis
+                </h5>
+                <div className="text-xs text-gray-600 space-y-1">
+                  <div>Tipo: {analysisResults.metadata.analysisType}</div>
+                  <div>Idioma: {analysisResults.metadata.language}</div>
+                  <div>Tono: {analysisResults.metadata.tone}</div>
+                  <div>
+                    Confianza: {(analysisResults.confidence * 100).toFixed(1)}%
+                  </div>
+                  <div>
+                    Generado:{" "}
+                    {new Date(
+                      analysisResults.metadata.timestamp
+                    ).toLocaleString()}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
+
+      {/* Sección de contenido actual */}
+      <div className="bg-gray-50 p-4 rounded-lg border">
+        <h4 className="font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          <DocumentTextIcon className="h-5 w-5" />
+          Contenido Actual del Componente
+        </h4>
+
+        <div className="bg-white p-3 rounded border">
+          <div className="flex justify-between items-start mb-2">
+            <h5 className="font-medium text-gray-900">Contenido</h5>
+            <span className="text-xs text-gray-500">
+              {component.content
+                ? `${component.content.length} caracteres`
+                : "Vacío"}
+            </span>
+          </div>
+
+          <div className="text-sm text-gray-700 max-h-32 overflow-y-auto bg-gray-50 p-2 rounded">
+            {component.content || "No hay contenido"}
+          </div>
+
+          {component.content && (
+            <div className="mt-2 text-xs text-green-600">
+              ✅ Contenido aplicado correctamente
+            </div>
+          )}
+
+          {analysisResults?.narrative?.content && !component.content && (
+            <div className="mt-2">
+              <button
+                onClick={() =>
+                  applySpecificResult("narrative", analysisResults.narrative)
+                }
+                className="text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+              >
+                Aplicar Narrativa Generada
+              </button>
+              <p className="text-xs text-gray-500 mt-1">
+                La narrativa se generó pero no se aplicó automáticamente
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Sección de configuración tradicional */}
       <div className="border-t pt-4">
@@ -704,35 +703,6 @@ const TextConfig = ({ component, onUpdate, sectionData = {} }) => {
           </div>
         )}
       </div>
-
-      {/* Indicadores de contenido generado */}
-      {component.generatedCharts && component.generatedCharts.length > 0 && (
-        <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
-          <h4 className="font-semibold text-blue-900 mb-2">
-            Gráficos Generados por AI
-          </h4>
-          <div className="text-sm text-blue-800">
-            {component.generatedCharts.length} gráfico(s) configurado(s) para
-            esta sección.
-          </div>
-        </div>
-      )}
-
-      {component.generatedKPIs && component.generatedKPIs.length > 0 && (
-        <div className="bg-green-50 p-4 rounded-lg border border-green-200">
-          <h4 className="font-semibold text-green-900 mb-2">
-            KPIs Generados por AI
-          </h4>
-          <div className="grid grid-cols-2 gap-2">
-            {component.generatedKPIs.map((kpi, index) => (
-              <div key={index} className="bg-white p-2 rounded border">
-                <div className="font-medium text-sm">{kpi.name}</div>
-                <div className="text-green-700 font-bold">{kpi.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

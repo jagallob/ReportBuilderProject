@@ -40,10 +40,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 
 // Configuración AI
-// CORRECCIÓN: Se busca la sección "AISettings" en appsettings.json, que coincide con el nombre de la clase de configuración.
 builder.Services.Configure<ReportBuilderAPI.Configuration.AISettings>(builder.Configuration.GetSection("AISettings"));
 builder.Services.AddHttpClient<IDeepSeekService, DeepSeekService>();
-builder.Services.AddScoped<IOllamaService, OllamaService>();
+builder.Services.AddHttpClient<IAnthropicService, AnthropicService>();
 
 
 // Registrar servicios
@@ -168,11 +167,25 @@ var app = builder.Build();
 // Inicializar servicios AI
 using (var scope = app.Services.CreateScope())
 {
-    var vectorService = scope.ServiceProvider.GetRequiredService<IVectorService>();
-    await vectorService.InitializeAsync();
+    try
+    {
+        var vectorService = scope.ServiceProvider.GetRequiredService<IVectorService>();
+        await vectorService.InitializeAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: Vector service initialization failed: {ex.Message}");
+    }
 
-    var mcpService = scope.ServiceProvider.GetRequiredService<IMCPClientService>();
-    await mcpService.InitializeAsync();
+    try
+    {
+        var mcpService = scope.ServiceProvider.GetRequiredService<IMCPClientService>();
+        await mcpService.InitializeAsync();
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"Warning: MCP service initialization failed: {ex.Message}");
+    }
 }
 
 // Configure the HTTP request pipeline.

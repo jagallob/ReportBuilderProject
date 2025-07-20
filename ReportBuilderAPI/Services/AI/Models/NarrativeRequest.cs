@@ -16,5 +16,9 @@ namespace ReportBuilderAPI.Services.AI.Models
 
         [JsonPropertyName("templateId")]
         public string TemplateId { get; set; } = string.Empty;
+
+        // Datos del Excel para análisis directo
+        [JsonPropertyName("excelData")]
+        public List<List<object>> ExcelData { get; set; } = new();
     }
 }

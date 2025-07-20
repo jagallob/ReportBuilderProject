@@ -1,64 +1,72 @@
 using Microsoft.AspNetCore.Mvc;
 using ReportBuilderAPI.Services.AI.Interfaces;
-using ReportBuilderAPI.DTOs;
 using ReportBuilderAPI.Services.AI.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace ReportBuilderAPI.Controllers
 {
+    /// <summary>
+    /// Controlador para análisis de datos con IA
+    /// </summary>
     [ApiController]
-    [Route("api/[controller]")]
+    [Route("api/analytics")]
+    [Produces("application/json")]
     public class AnalyticsController : ControllerBase
     {
         private readonly IAnalyticsService _analyticsService;
         private readonly ILogger<AnalyticsController> _logger;
 
-        public AnalyticsController(IAnalyticsService analyticsService, ILogger<AnalyticsController> logger)
+        public AnalyticsController(
+            IAnalyticsService analyticsService,
+            ILogger<AnalyticsController> logger)
         {
             _analyticsService = analyticsService;
             _logger = logger;
         }
 
+        /// <summary>
+        /// Analiza datos de Excel usando IA
+        /// </summary>
+        /// <param name="request">Datos y configuración para el análisis</param>
+        /// <response code="200">Análisis completado</response>
+        /// <response code="400">Solicitud inválida</response>
         [HttpPost("analyze")]
-        public async Task<ActionResult<AnalysisResult>> AnalyzeExcel([FromBody] AnalysisRequest request)
+        [ProducesResponseType(typeof(AnalysisResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> AnalyzeData([FromBody] AnalysisRequest request)
         {
             try
             {
-                // Log para confirmar que el binding del modelo fue exitoso.
-                _logger.LogInformation("Solicitud de análisis recibida correctamente. Tipo de análisis: {AnalysisType}, Idioma: {Language}",
-                    request.Config.AnalysisType,
-                    request.Config.Language);
+                _logger.LogInformation("Iniciando análisis de datos con configuración: {Config}", 
+                    request.Config?.AnalysisType ?? "No especificado");
 
-                // Devolvemos un resultado falso para probar que el flujo completo funciona.
-                var fakeResult = new AnalysisResult
-                {
-                    ReportId = 1,
-                    Summary = $"Este es un resumen de prueba para un análisis '{request.Config.AnalysisType}' en '{request.Config.Language}'.",
-                    Metrics = new Dictionary<string, object>
-                    {
-                        { "Ventas Totales", 125000 },
-                        { "Ticket Promedio", 85.50 },
-                        { "Filas Recibidas", request.Data.Count }
-                    },
-                    Trends = new List<Trend> { new Trend { Metric = "Ventas", Direction = "Up", ChangePercentage = 15 } },
-                    Insights = new List<Insight> { new Insight { Title = "Oportunidad Detectada", Description = "El producto 'X' tiene un rendimiento superior al promedio." } },
-                    GeneratedAt = DateTime.UtcNow
-                };
-
-                await Task.Delay(1000);
-                return Ok(fakeResult);
-
-                // var result = await _analyticsService.AnalyzeExcelDataAsync(request);
-                // return Ok(result);
+                var result = await _analyticsService.AnalyzeExcelDataAsync(request);
+                
+                _logger.LogInformation("Análisis completado exitosamente");
+                return Ok(result);
+            }
+            catch (ValidationException ex)
+            {
+                _logger.LogWarning(ex, "Error de validación en análisis de datos");
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en análisis de Excel");
+                _logger.LogError(ex, "Error durante el análisis de datos");
                 return StatusCode(500, "Error interno del servidor");
             }
         }
 
-        [HttpGet("insights/{reportId}")]
-        public async Task<ActionResult<List<Insight>>> GetInsights(int reportId)
+        /// <summary>
+        /// Obtiene insights para un reporte específico
+        /// </summary>
+        /// <param name="reportId">ID del reporte</param>
+        /// <response code="200">Lista de insights</response>
+        /// <response code="404">Reporte no encontrado</response>
+        [HttpGet("insights/{reportId:int}")]
+        [ProducesResponseType(typeof(List<Insight>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status404NotFound)]
+        public async Task<IActionResult> GetInsights([FromRoute, Range(1, int.MaxValue)] int reportId)
         {
             try
             {
@@ -67,13 +75,26 @@ namespace ReportBuilderAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error obteniendo insights para reporte {reportId}");
+                _logger.LogError(ex, "Error obteniendo insights para reporte {ReportId}", reportId);
                 return StatusCode(500, "Error interno del servidor");
             }
         }
 
-        [HttpGet("trends/{areaId}")]
-        public async Task<ActionResult<List<Trend>>> GetTrends(int areaId, [FromQuery] DateTime startDate, [FromQuery] DateTime endDate)
+        /// <summary>
+        /// Obtiene tendencias para un área específica
+        /// </summary>
+        /// <param name="areaId">ID del área</param>
+        /// <param name="startDate">Fecha de inicio</param>
+        /// <param name="endDate">Fecha de fin</param>
+        /// <response code="200">Lista de tendencias</response>
+        /// <response code="400">Parámetros inválidos</response>
+        [HttpGet("trends/{areaId:int}")]
+        [ProducesResponseType(typeof(List<Trend>), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> GetTrends(
+            [FromRoute, Range(1, int.MaxValue)] int areaId,
+            [FromQuery] DateTime startDate,
+            [FromQuery] DateTime endDate)
         {
             try
             {
@@ -82,27 +103,40 @@ namespace ReportBuilderAPI.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error obteniendo tendencias para área {areaId}");
+                _logger.LogError(ex, "Error obteniendo tendencias para área {AreaId}", areaId);
                 return StatusCode(500, "Error interno del servidor");
             }
         }
 
-        [HttpPost("compare-periods")]
-        public async Task<ActionResult<AnalysisResult>> ComparePeriods([FromBody] ComparisonRequest request)
+        /// <summary>
+        /// Compara dos períodos de datos
+        /// </summary>
+        /// <param name="areaId">ID del área</param>
+        /// <param name="period1Start">Inicio del período 1</param>
+        /// <param name="period1End">Fin del período 1</param>
+        /// <param name="period2Start">Inicio del período 2</param>
+        /// <param name="period2End">Fin del período 2</param>
+        /// <response code="200">Análisis comparativo</response>
+        /// <response code="400">Parámetros inválidos</response>
+        [HttpGet("compare/{areaId:int}")]
+        [ProducesResponseType(typeof(AnalysisResult), StatusCodes.Status200OK)]
+        [ProducesResponseType(StatusCodes.Status400BadRequest)]
+        public async Task<IActionResult> ComparePeriods(
+            [FromRoute, Range(1, int.MaxValue)] int areaId,
+            [FromQuery] DateTime period1Start,
+            [FromQuery] DateTime period1End,
+            [FromQuery] DateTime period2Start,
+            [FromQuery] DateTime period2End)
         {
             try
             {
-                var result = await _analyticsService.ComparePeroidsAsync(
-                    request.AreaId,
-                    request.Period1Start,
-                    request.Period1End,
-                    request.Period2Start,
-                    request.Period2End);
-                return Ok(result);
+                var comparison = await _analyticsService.ComparePeroidsAsync(
+                    areaId, period1Start, period1End, period2Start, period2End);
+                return Ok(comparison);
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error en comparación de períodos");
+                _logger.LogError(ex, "Error comparando períodos para área {AreaId}", areaId);
                 return StatusCode(500, "Error interno del servidor");
             }
         }
