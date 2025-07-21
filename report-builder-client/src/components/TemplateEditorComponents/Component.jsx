@@ -71,11 +71,29 @@ const Component = ({
     switch (component.type) {
       case "text":
         return (
-          <TextConfig
-            component={component}
-            onUpdate={onUpdate}
-            sectionData={sectionData}
-          />
+          <div className="space-y-3">
+            {/* Solo configuración básica del componente */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                Contenido del texto
+              </label>
+              <textarea
+                value={component.content || ""}
+                onChange={(e) => onUpdate("content", e.target.value)}
+                className="w-full p-2 border rounded text-sm"
+                rows={3}
+                placeholder="Escribe el contenido del texto..."
+              />
+            </div>
+
+            {/* Mensaje informativo */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded">
+              <p className="text-sm text-blue-700">
+                💡 <strong>Configuración avanzada:</strong> Usa el panel lateral
+                para configurar la generación de narrativa con AI.
+              </p>
+            </div>
+          </div>
         );
       case "table":
         // MEJORA: Pasar sectionData para que pueda acceder a los datos de Excel

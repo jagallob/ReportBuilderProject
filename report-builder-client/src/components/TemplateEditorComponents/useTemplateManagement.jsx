@@ -22,14 +22,68 @@ const useTemplateManagement = (initialTemplate) => {
   });
 
   // Función para clonar seguro
-  const cloneTemplate = (prev) =>
-    typeof structuredClone === "function"
-      ? structuredClone(prev)
-      : JSON.parse(JSON.stringify(prev));
+  const cloneTemplate = (prev) => {
+    // Verificar si el objeto contiene funciones
+    const hasFunctions = (obj) => {
+      if (obj === null || typeof obj !== "object") return false;
+      if (Array.isArray(obj)) {
+        return obj.some((item) => hasFunctions(item));
+      }
+      return Object.values(obj).some(
+        (value) => typeof value === "function" || hasFunctions(value)
+      );
+    };
+
+    // Si contiene funciones, usar JSON.parse/stringify directamente
+    if (hasFunctions(prev)) {
+      try {
+        return JSON.parse(JSON.stringify(prev));
+      } catch (error) {
+        console.error("❌ Error clonando plantilla con JSON:", error);
+        return { ...prev };
+      }
+    }
+
+    // Si no contiene funciones, intentar structuredClone
+    try {
+      if (typeof structuredClone === "function") {
+        return structuredClone(prev);
+      }
+    } catch (error) {
+      console.log(
+        "⚠️ structuredClone falló, usando JSON.parse:",
+        error.message
+      );
+    }
+
+    // Fallback final
+    try {
+      return JSON.parse(JSON.stringify(prev));
+    } catch (error) {
+      console.error("❌ Error clonando plantilla:", error);
+      return { ...prev };
+    }
+  };
 
   const updateTemplate = (path, value) => {
     setTemplate((prev) => {
       try {
+        // Validación de entrada
+        if (!path || typeof path !== "string") {
+          console.error("❌ Error: path inválido", { path, type: typeof path });
+          return prev;
+        }
+
+        // Validar que value no sea undefined (pero permitir null y otros valores)
+        if (value === undefined) {
+          console.error("❌ Error: value es undefined", {
+            path,
+            value,
+            valueType: typeof value,
+          });
+          return prev;
+        }
+
         const keys = path.split(".");
         const newTemplate = cloneTemplate(prev);
 
@@ -68,7 +122,9 @@ const useTemplateManagement = (initialTemplate) => {
         console.error("❌ Error actualizando plantilla:", {
           path,
           value,
-          error,
+          valueType: typeof value,
+          error: error.message,
+          stack: error.stack,
         });
         return prev;
       }
@@ -209,24 +265,32 @@ const useTemplateManagement = (initialTemplate) => {
         const sheet = workbook.Sheets[sheetName];
         const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 1 });
 
-        // Procesamos los datos para un formato más útil
-        const headers = jsonData[0] || [];
-        // CORRECCIÓN: Filtrar filas vacías que XLSX a veces incluye.
-        // Una fila se considera vacía si todas sus celdas están vacías o son nulas.
-        const rows = jsonData
-          .slice(1)
-          .filter((row) => row.some((cell) => cell != null && cell !== ""));
+        if (jsonData.length < 2) {
+          console.error("❌ Archivo Excel sin datos válidos");
+          return;
+        }
+
+        const headers = jsonData[0];
+        const rows = jsonData.slice(1);
 
         const processedData = {
           headers,
           data: rows,
-          rawData: jsonData, // Mantenemos rawData por si es útil en otro lugar
+          fileName: file.name,
+          uploadedAt: new Date().toISOString(),
         };
+
+        // PRESERVAR SELECCIÓN ACTUAL
+        const currentSelection = selectedItem;
 
         setTemplate((prev) => {
           const newTemplate = cloneTemplate(prev);
           const section = newTemplate.sections[sectionIndex];
-          if (!section) return prev;
+
+          if (!section) {
+            console.error("❌ Sección no encontrada:", sectionIndex);
+            return prev;
+          }
 
           // 1. Guardar datos en la sección
           section.excelData = processedData;
@@ -251,6 +315,22 @@ const useTemplateManagement = (initialTemplate) => {
                   };
                 }
               }
+
+              // PRESERVAR CONFIGURACIÓN DE AI - No sobrescribir si ya existe
+              if (component.type === "text" && !component.aiConfig) {
+                // Solo inicializar si no existe configuración de AI
+                component.aiConfig = {
+                  analysisType: "comprehensive",
+                  language: "es",
+                  tone: "professional",
+                  includeNarrative: true,
+                  includeCharts: false,
+                  includeKPIs: false,
+                  includeTrends: false,
+                  includePatterns: false,
+                  includeRecommendations: false,
+                };
+              }
             });
           } else {
             // Si por alguna razón la sección no tiene un array de componentes, lo inicializamos.
@@ -259,6 +339,42 @@ const useTemplateManagement = (initialTemplate) => {
 
           return newTemplate;
         });
+
+        // RESTAURAR SELECCIÓN DEL COMPONENTE SI ESTABA SELECCIONADO
+        if (
+          currentSelection &&
+          currentSelection.type === "component" &&
+          currentSelection.sectionIndex === sectionIndex
+        ) {
+          // Mantener la selección del componente activo
+          setSelectedItem(currentSelection);
+        } else {
+          // INTENTAR SELECCIONAR EL PRIMER COMPONENTE DE TEXTO SI NO HAY SELECCIÓN
+          const updatedSections = template.sections;
+          const section = updatedSections[sectionIndex];
+
+          if (section && section.components && section.components.length > 0) {
+            // Buscar el primer componente de texto
+            const textComponentIndex = section.components.findIndex(
+              (comp) => comp.type === "text"
+            );
+
+            if (textComponentIndex !== -1) {
+              setSelectedItem({
+                type: "component",
+                sectionIndex: sectionIndex,
+                componentIndex: textComponentIndex,
+              });
+            } else {
+              // Si no hay componente de texto, seleccionar el primero
+              setSelectedItem({
+                type: "component",
+                sectionIndex: sectionIndex,
+                componentIndex: 0,
+              });
+            }
+          }
+        }
 
         console.log("✅ Excel cargado correctamente:", {
           headers: headers.length,

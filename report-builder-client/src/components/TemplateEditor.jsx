@@ -97,6 +97,9 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
             updateTemplate={updateTemplate}
             handleFileUpload={handleFileUpload}
             currentSection={getCurrentSection()}
+            addEventToSection={handleAddEventToSection}
+            setShowSelectEventsModal={setShowSelectEventsModal}
+            setSelectedItem={setSelectedItem}
           />
         )}
 
@@ -110,25 +113,6 @@ const TemplateEditor = ({ initialTemplate, onSave, onCancel }) => {
               addEventToSection={handleAddEventToSection}
             />
           )}
-
-        {selectedItem && typeof selectedItem.index === "number" && (
-          <div className="fixed bottom-8 right-8 z-40 flex flex-col gap-3 items-end">
-            <button
-              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded shadow"
-              onClick={() => setIsModalOpen(true)}
-              title="Agregar suceso manualmente"
-            >
-              + Agregar Suceso Manual
-            </button>
-            <button
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow"
-              onClick={() => setShowSelectEventsModal(true)}
-              title="Agregar sucesos existentes"
-            >
-              + Agregar Sucesos Existentes
-            </button>
-          </div>
-        )}
 
         {showSelectEventsModal &&
           selectedItem &&
