@@ -30,7 +30,6 @@
 - **Generación de Narrativas Automática**: Crea textos coherentes y profesionales para las secciones de los reportes usando la API de Anthropic.
 - **Análisis de Datos Inteligente**: Genera insights y resúmenes ejecutivos a partir de los datos cargados.
 - **Búsqueda Semántica**: Permite buscar información dentro de los reportes por significado, no solo por palabras clave.
-- **Análisis de Consumo Metro**: Sistema especializado para análisis de datos de transporte público con narrativas automáticas.
 
 ---
 
