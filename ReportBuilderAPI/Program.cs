@@ -103,11 +103,25 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        policy
-              .WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod()
-              .AllowCredentials();
+        if (builder.Environment.IsDevelopment())
+        {
+            // More permissive CORS for development
+            policy
+                .SetIsOriginAllowed(origin => true) // Allow any origin in development
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials();
+        }
+        else
+        {
+            // Restrictive CORS for production
+            policy
+                .WithOrigins("http://localhost:5173", "https://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod()
+                .AllowCredentials()
+                .SetIsOriginAllowedToAllowWildcardSubdomains();
+        }
     });
 });
 
@@ -199,10 +213,16 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-
-app.UseHttpsRedirection();
-app.UseAuthentication();
+// Apply CORS before HTTPS redirection to prevent redirect issues with preflight requests
 app.UseCors(MyAllowSpecificOrigins);
+
+// Disable HTTPS redirection completely in development to prevent CORS issues
+// if (!app.Environment.IsDevelopment())
+// {
+//     app.UseHttpsRedirection();
+// }
+
+app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 app.UseStaticFiles(); // permite servir archivos como /uploads/*

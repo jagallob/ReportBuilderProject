@@ -3,7 +3,9 @@ import TextConfig from "./TextConfig";
 import TableConfig from "./TableConfig";
 import ChartConfig from "./ChartConfig";
 import KpiConfig from "./KpiConfig";
+import ImageConfig from "./ImageConfig";
 import ChartRenderer from "../Renders/ChartRenderer";
+import ImageRenderer from "../Renders/ImageRenderer";
 
 const Component = ({
   component,
@@ -47,6 +49,7 @@ const Component = ({
     { type: "table", name: "Tabla", icon: "📊" },
     { type: "chart", name: "Gráfico", icon: "📈" },
     { type: "kpi", name: "KPI", icon: "🔢" },
+    { type: "image", name: "Imagen", icon: "🖼️" },
   ];
 
   // Componente wrapper para mostrar la previsualización
@@ -60,6 +63,11 @@ const Component = ({
         component.dataSource?.mappings?.yAxisField
       ) {
         return <ChartRenderer component={component} excelData={excelData} />;
+      }
+    } else if (component.type === "image") {
+      // Mostrar la imagen si hay datos de imagen
+      if (component.imageData) {
+        return <ImageRenderer component={component} />;
       }
     }
     return null;
@@ -129,6 +137,21 @@ const Component = ({
             onUpdate={onUpdate}
             sectionData={sectionData}
           />
+        );
+      case "image":
+        return (
+          <>
+            <ImageConfig
+              component={component}
+              onUpdate={onUpdate}
+            />
+            {preview && (
+              <div className="mt-4 p-3 border rounded bg-gray-50">
+                <h4 className="text-sm font-medium mb-2">Previsualización</h4>
+                {preview}
+              </div>
+            )}
+          </>
         );
       default:
         return null;

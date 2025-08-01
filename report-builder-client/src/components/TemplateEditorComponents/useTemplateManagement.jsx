@@ -191,6 +191,36 @@ const useTemplateManagement = (initialTemplate) => {
           aggregation: "sum", // 'sum', 'avg', 'count', 'max', 'min'
         };
       }
+    } else if (componentType === "image") {
+      newComponent.imageData = "";
+      newComponent.position = "full-width";
+      newComponent.textPosition = "none";
+      newComponent.overlayText = "";
+      newComponent.textStyle = {
+        fontSize: "medium",
+        color: "#000000",
+        backgroundColor: "#ffffff",
+        backgroundOpacity: 80,
+      };
+      newComponent.maintainAspectRatio = true;
+      newComponent.addBorder = false;
+      newComponent.borderColor = "#000000";
+      newComponent.borderWidth = 1;
+      newComponent.customPosition = {
+        x: 0,
+        y: 0,
+        width: 50,
+        height: 50,
+      };
+      newComponent.customTextPosition = {
+        x: 50,
+        y: 50,
+      };
+      // Configuración para imagen de página completa
+      newComponent.pageRange = "all";
+      newComponent.customPages = "";
+      newComponent.backgroundOpacity = 100;
+      newComponent.showContentOverImage = true;
     }
 
     const updatedSections = cloneTemplate(template.sections);
