@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" fill="#4F46E5" rx="20"/>
+  <g transform="translate(20, 20) scale(0.6)">
+    <!-- Chart bars representing the 📈 emoji -->
+    <rect x="10" y="60" width="8" height="20" fill="white"/>
+    <rect x="25" y="50" width="8" height="30" fill="white"/>
+    <rect x="40" y="40" width="8" height="40" fill="white"/>
+    <rect x="55" y="30" width="8" height="50" fill="white"/>
+    <rect x="70" y="20" width="8" height="60" fill="white"/>
+    
+    <!-- Trend line -->
+    <path d="M 10 80 L 25 70 L 40 60 L 55 50 L 70 40" stroke="white" stroke-width="3" fill="none" stroke-linecap="round"/>
+    
+    <!-- Arrow pointing up -->
+    <path d="M 75 35 L 80 30 L 85 35" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+</svg> 

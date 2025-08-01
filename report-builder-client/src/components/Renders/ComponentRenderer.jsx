@@ -3,6 +3,7 @@ import { TextRenderer } from "./TextRenderer";
 import { TableRenderer } from "./TableRenderer";
 import { ChartRenderer } from "./ChartRenderer";
 import { KpiRenderer } from "./KpiRenderer";
+import ImageRenderer from "./ImageRenderer";
 
 const ComponentRenderer = ({ component, excelData }) => {
   if (!component) {
@@ -26,6 +27,8 @@ const ComponentRenderer = ({ component, excelData }) => {
       );
     case "kpi":
       return <KpiRenderer component={component} excelData={excelData} />;
+    case "image":
+      return <ImageRenderer component={component} />;
     default:
       return (
         <div className="p-4 text-red-500">

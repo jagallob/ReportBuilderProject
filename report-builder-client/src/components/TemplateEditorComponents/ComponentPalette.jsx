@@ -13,6 +13,7 @@ const ComponentPalette = ({
     { type: "table", name: "Tabla", icon: "📊" },
     { type: "chart", name: "Gráfico", icon: "📈" },
     { type: "kpi", name: "KPI", icon: "🔢" },
+    { type: "image", name: "Imagen", icon: "🖼️" },
   ];
 
   return (

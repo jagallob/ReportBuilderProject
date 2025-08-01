@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import ComponentRenderer from "../Renders/ComponentRenderer";
 import { exportToPDF } from "../../utils/exportUtils";
 import { toast } from "react-toastify";
+import { shouldShowImageOnPage } from "../../utils/pageUtils";
 
 const PreviewPanel = ({ template, onClose }) => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -52,6 +53,25 @@ const PreviewPanel = ({ template, onClose }) => {
 
   const PdfIcon = () => <span></span>;
   const WordIcon = () => <span></span>;
+
+  // Función para obtener todas las imágenes de página completa
+  const getFullPageImages = () => {
+    const images = [];
+    template.sections.forEach((section, sectionIndex) => {
+      section.components.forEach((component, componentIndex) => {
+        if (component.type === "image" && component.position === "full-page") {
+          images.push({
+            component,
+            sectionIndex,
+            componentIndex,
+          });
+        }
+      });
+    });
+    return images;
+  };
+
+  const fullPageImages = getFullPageImages();
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-auto">
@@ -141,7 +161,7 @@ const PreviewPanel = ({ template, onClose }) => {
         <div className="flex-1 overflow-auto p-6 bg-gray-100">
           <div
             id="report-preview"
-            className="bg-white shadow-md mx-auto transition-all"
+            className="bg-white shadow-md mx-auto transition-all relative"
             style={{
               transform: `scale(${zoom / 100})`,
               transformOrigin: "top center",
@@ -150,44 +170,89 @@ const PreviewPanel = ({ template, onClose }) => {
               padding: "20mm",
             }}
           >
-            {/* Encabezado */}
-            <div className="mb-8 pb-4 border-b border-gray-300">
-              <h1 className="text-2xl font-bold mb-2">
-                {template.metadata?.description || "Informe sin título"}
-              </h1>
-              <div className="text-gray-500 text-sm">
-                Tipo: {template.metadata?.templateType || "Genérico"} | Versión:{" "}
-                {template.metadata?.version || "1.0.0"}
-              </div>
-            </div>
-
-            {/* Secciones */}
-            {template.sections.map((section, sectionIndex) => (
-              <div key={sectionIndex} className="mb-8">
-                <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-200">
-                  {section.title}
-                </h2>
-                <div className="space-y-4">
-                  {section.components.map((component, componentIndex) => (
-                    <div
-                      key={componentIndex}
-                      className="border border-gray-200 rounded p-4"
-                    >
-                      <ComponentRenderer
-                        component={component}
-                        excelData={section.excelData}
-                      />
-                    </div>
-                  ))}
+            {/* Imágenes de fondo de página completa */}
+            {fullPageImages.map((imageData, index) => {
+              if (shouldShowImageOnPage(imageData.component, currentPage)) {
+                return (
+                  <div
+                    key={`bg-image-${index}`}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 0,
+                      opacity:
+                        (imageData.component.backgroundOpacity || 100) / 100,
+                    }}
+                  >
+                    <img
+                      src={imageData.component.imageData}
+                      alt="Imagen de fondo"
+                      style={{
+                        width: "100%",
+                        height: "100%",
+                        objectFit: "cover",
+                      }}
+                    />
+                  </div>
+                );
+              }
+              return null;
+            })}
+            {/* Contenido del informe (sobre las imágenes de fondo) */}
+            <div style={{ position: "relative", zIndex: 1 }}>
+              {/* Encabezado */}
+              <div className="mb-8 pb-4 border-b border-gray-300">
+                <h1 className="text-2xl font-bold mb-2">
+                  {template.metadata?.description || "Informe sin título"}
+                </h1>
+                <div className="text-gray-500 text-sm">
+                  Tipo: {template.metadata?.templateType || "Genérico"} |
+                  Versión: {template.metadata?.version || "1.0.0"}
                 </div>
-                {renderEventsTimeline(section.events)}
               </div>
-            ))}
 
-            {/* Footer */}
-            <div className="mt-8 pt-4 border-t border-gray-300 text-gray-500 text-sm text-center">
-              Página {currentPage} | Generado el{" "}
-              {new Date().toLocaleDateString()}
+              {/* Secciones */}
+              {template.sections.map((section, sectionIndex) => (
+                <div key={sectionIndex} className="mb-8">
+                  <h2 className="text-xl font-bold mb-4 pb-2 border-b border-gray-200">
+                    {section.title}
+                  </h2>
+                  <div className="space-y-4">
+                    {section.components.map((component, componentIndex) => {
+                      // Omitir imágenes de página completa del contenido normal
+                      if (
+                        component.type === "image" &&
+                        component.position === "full-page"
+                      ) {
+                        return null;
+                      }
+
+                      // Para otros componentes, usar el contenedor normal
+                      return (
+                        <div
+                          key={componentIndex}
+                          className="border border-gray-200 rounded p-4"
+                        >
+                          <ComponentRenderer
+                            component={component}
+                            excelData={section.excelData}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {renderEventsTimeline(section.events)}
+                </div>
+              ))}
+
+              {/* Footer */}
+              <div className="mt-8 pt-4 border-t border-gray-300 text-gray-500 text-sm text-center">
+                Página {currentPage} | Generado el{" "}
+                {new Date().toLocaleDateString()}
+              </div>
             </div>
           </div>
         </div>

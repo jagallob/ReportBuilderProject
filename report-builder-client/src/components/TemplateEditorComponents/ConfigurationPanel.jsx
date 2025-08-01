@@ -4,6 +4,7 @@ import TextConfig from "./TextConfig";
 import TableConfig from "./TableConfig";
 import ChartConfig from "./ChartConfig";
 import KpiConfig from "./KpiConfig";
+import ImageConfig from "./ImageConfig";
 import AIConfigPanel from "../AI/AIConfigPanel";
 import AIAnalysisPanel from "../AI/AIAnalysisPanel";
 import { getDefaultAIConfig } from "../../utils/featureFlags";
@@ -90,6 +91,13 @@ const ConfigurationPanel = ({
             component={component}
             onUpdate={onComponentUpdate}
             sectionData={currentSection}
+          />
+        );
+      case "image":
+        return (
+          <ImageConfig
+            component={component}
+            onUpdate={onComponentUpdate}
           />
         );
       default:
