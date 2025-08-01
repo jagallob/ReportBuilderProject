@@ -152,7 +152,7 @@ const Section = ({
         <div className="p-4 border border-dashed border-gray-300 rounded text-center text-gray-500">
           Arrastra componentes aquí o
           <div className="flex justify-center gap-2 mt-2">
-            {["text", "table", "chart", "kpi"].map((type) => (
+            {["text", "table", "chart", "kpi", "image"].map((type) => (
               <button
                 key={type}
                 onClick={(e) => {
