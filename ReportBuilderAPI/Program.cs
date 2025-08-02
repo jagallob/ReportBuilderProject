@@ -6,6 +6,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using ReportBuilderAPI.Utils;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.Server.IIS;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
 using ReportBuilderAPI.Repositories.Interfaces;
 using ReportBuilderAPI.Repositories.Implementations;
 using ReportBuilderAPI.Service.Interface;
@@ -18,6 +20,8 @@ using ReportBuilderAPI.Services.Vector.Interfaces;
 using ReportBuilderAPI.Services.Vector.Implementation;
 using ReportBuilderAPI.Services.Data.Interfaces;
 using ReportBuilderAPI.Services.Data.Implementation;
+using ReportBuilderAPI.Services.PDF.Interfaces;
+using ReportBuilderAPI.Services.PDF.Implementation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -60,6 +64,9 @@ builder.Services.AddSingleton<IVectorService, VectorService>();
 
 // Registrar servicios MCP
 builder.Services.AddHttpClient<IMCPClientService, MCPClientService>();
+
+// Registrar servicios PDF
+builder.Services.AddScoped<IPDFAnalysisService, PDFAnalysisService>();
 
 // Agregar controladores
 builder.Services.AddControllers()
@@ -170,10 +177,23 @@ builder.Services.AddSwaggerGen(options =>
 
 
 
-//Para archivos pesados
+// Configuración para archivos pesados
 builder.Services.Configure<FormOptions>(options =>
 {
-    options.MultipartBodyLengthLimit = 50 * 1024 * 1024; // 50 MB
+    options.MultipartBodyLengthLimit = 100 * 1024 * 1024; // 100 MB
+    options.ValueLengthLimit = int.MaxValue;
+    options.MultipartHeadersLengthLimit = int.MaxValue;
+});
+
+// Configurar límites de request
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 100 * 1024 * 1024; // 100 MB
+});
+
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = 100 * 1024 * 1024; // 100 MB
 });
 
 var app = builder.Build();
