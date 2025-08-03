@@ -12,7 +12,7 @@ namespace ReportBuilderAPI.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin,admin")]
     public class ConsolidatedTemplatesController : ControllerBase
     {
         private readonly AppDbContext _context;
@@ -27,6 +27,22 @@ namespace ReportBuilderAPI.Controllers
             _context = context;
             _logger = logger;
             _pdfAnalysisService = pdfAnalysisService;
+        }
+
+        /// <summary>
+        /// Endpoint de prueba para verificar autenticación
+        /// </summary>
+        [HttpGet("test-auth")]
+        [Authorize] // Solo requiere autenticación, no rol específico
+        public ActionResult<object> TestAuth()
+        {
+            return Ok(new
+            {
+                IsAuthenticated = User.Identity?.IsAuthenticated,
+                UserName = User.Identity?.Name,
+                Roles = User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value).ToList(),
+                Claims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList()
+            });
         }
 
         /// <summary>
@@ -427,6 +443,12 @@ namespace ReportBuilderAPI.Controllers
         {
             try
             {
+                // Debug: Log authentication information
+                _logger.LogInformation("User authenticated: {IsAuthenticated}", User.Identity?.IsAuthenticated);
+                _logger.LogInformation("User name: {UserName}", User.Identity?.Name);
+                _logger.LogInformation("User roles: {Roles}", string.Join(", ", User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)));
+                _logger.LogInformation("User claims: {Claims}", string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
+
                 if (request.PDFFile == null || request.PDFFile.Length == 0)
                 {
                     return BadRequest("No se proporcionó archivo PDF");

@@ -283,30 +283,51 @@ Responde en formato JSON con la siguiente estructura:
             try
             {
                 var prompt = $@"
-Analiza el siguiente documento PDF y identifica sus secciones principales. 
-Para cada sección, proporciona:
+Analiza el siguiente documento PDF de Informe Periódico de Fin de Ejercicio y identifica sus secciones principales de manera estructurada.
 
-1. Título de la sección
-2. Contenido principal
-3. Número de página
-4. Orden en el documento
-5. Palabras clave relevantes
-6. Tipo de contenido (texto, datos, gráficos, etc.)
+INSTRUCCIONES ESPECÍFICAS:
+1. Identifica las secciones principales del informe (incluyendo aspectos financieros, ambientales, sociales, de gobernanza, jurídicos, de sostenibilidad, de riesgo, operacionales, etc.)
+2. Para cada sección, extrae el título exacto y subtítulos si existen
+3. Identifica el contenido principal de cada sección (máximo 300 caracteres para evitar truncamiento)
+4. Determina el número de página donde aparece cada sección
+5. Establece el orden lógico de las secciones en el documento
+6. Identifica palabras clave relevantes para cada sección (máximo 3 palabras clave)
+7. Clasifica el tipo de contenido (texto|datos|graficos|tablas|mixto)
 
-Documento:
+TIPOS DE SECCIONES ESPERADAS EN INFORMES PERIÓDICOS DE FIN DE EJERCICIO:
+- Aspectos Generales de la Operación
+- Desempeño Bursátil y Financiero
+- Prácticas de Sostenibilidad e Inversión Responsable
+- Información Ambiental y de Sostenibilidad
+- Aspectos Sociales y de Recursos Humanos
+- Gobernanza Corporativa
+- Gestión de Riesgos
+- Información Jurídica y Regulatoria
+- Estados Financieros y Análisis Financiero
+- Indicadores de Sostenibilidad (ESG)
+- Información de Mercado y Competencia
+- Anexos y Documentación Complementaria
+
+Documento a analizar:
 {content}
 
-Responde en formato JSON con la siguiente estructura:
+IMPORTANTE: 
+- Responde ÚNICAMENTE en formato JSON válido
+- Limita el contenido a 300 caracteres máximo por sección
+- Usa máximo 3 palabras clave por sección
+- Asegúrate de que el JSON sea válido y completo
+
+Estructura JSON:
 {{
     ""sections"": [
         {{
-            ""title"": ""Título de la sección"",
-            ""subtitle"": ""Subtítulo opcional"",
-            ""content"": ""Contenido principal de la sección"",
+            ""title"": ""Título exacto de la sección"",
+            ""subtitle"": ""Subtítulo si existe, o cadena vacía"",
+            ""content"": ""Contenido principal (máximo 300 caracteres)"",
             ""pageNumber"": 1,
             ""order"": 1,
-            ""keywords"": [""palabra1"", ""palabra2""],
-            ""contentType"": ""texto|datos|graficos|mixto""
+            ""keywords"": [""palabra1"", ""palabra2"", ""palabra3""],
+            ""contentType"": ""texto|datos|graficos|tablas|mixto""
         }}
     ]
 }}";
@@ -316,11 +337,19 @@ Responde en formato JSON con la siguiente estructura:
 
                 try
                 {
+                    _logger.LogInformation("Primer intento de parsing - Respuesta de AI: {Response}", response.Length > 500 ? response.Substring(0, 500) + "..." : response);
+                    
                     var jsonData = JsonSerializer.Deserialize<Dictionary<string, object>>(response);
+                    _logger.LogInformation("JSON deserializado exitosamente. Propiedades: {Properties}", jsonData != null ? string.Join(", ", jsonData.Keys) : "null");
+                    
                     if (jsonData != null && jsonData.ContainsKey("sections"))
                     {
-                        // Procesar secciones identificadas
-                        // Implementar lógica de parsing según la respuesta
+                        _logger.LogInformation("Propiedad 'sections' encontrada, llamando a ParseSectionsFromAIResponse");
+                        sections = ParseSectionsFromAIResponse(response);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Propiedad 'sections' NO encontrada en el primer intento. Llamando a ParseSectionsFromAIResponse como fallback");
                         sections = ParseSectionsFromAIResponse(response);
                     }
                 }
@@ -352,24 +381,201 @@ Responde en formato JSON con la siguiente estructura:
             {
                 var sections = new List<PDFSection>();
                 
-                // Implementar parsing de la respuesta de AI
-                // Por ahora, crear una sección básica
-                sections.Add(new PDFSection
+                _logger.LogInformation("Respuesta de AI recibida (primeros 500 chars): {Response}", aiResponse.Length > 500 ? aiResponse.Substring(0, 500) + "..." : aiResponse);
+                
+                // Limpiar la respuesta para extraer solo el JSON
+                var jsonStart = aiResponse.IndexOf('{');
+                var jsonEnd = aiResponse.LastIndexOf('}');
+                
+                if (jsonStart == -1 || jsonEnd == -1 || jsonEnd <= jsonStart)
                 {
-                    Title = "Sección Analizada",
-                    Content = aiResponse,
-                    PageNumber = 1,
-                    Order = 1,
-                    Keywords = new List<string> { "análisis", "AI" }
-                });
-
+                    _logger.LogWarning("No se encontró JSON válido en la respuesta de AI");
+                    return CreateFallbackSection(aiResponse);
+                }
+                
+                var jsonContent = aiResponse.Substring(jsonStart, jsonEnd - jsonStart + 1);
+                _logger.LogInformation("JSON extraído: {JsonContent}", jsonContent);
+                
+                try
+                {
+                    var jsonData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonContent);
+                    
+                    // Verificar si es una respuesta de Anthropic con estructura de mensaje
+                    if (jsonData != null && jsonData.ContainsKey("content") && jsonData["content"].ValueKind == JsonValueKind.Array)
+                    {
+                        var contentArray = jsonData["content"];
+                        if (contentArray.GetArrayLength() > 0)
+                        {
+                            var firstContent = contentArray[0];
+                            if (firstContent.TryGetProperty("text", out var textElement))
+                            {
+                                var textContent = textElement.GetString();
+                                _logger.LogInformation("Contenido de texto encontrado en respuesta de Anthropic: {TextContent}", textContent?.Length > 200 ? textContent.Substring(0, 200) + "..." : textContent);
+                                
+                                // Extraer JSON del texto (eliminar ```json y ```)
+                                var jsonText = textContent?.Replace("```json", "").Replace("```", "").Trim();
+                                if (!string.IsNullOrEmpty(jsonText))
+                                {
+                                    var actualJsonData = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(jsonText);
+                                    if (actualJsonData != null && actualJsonData.ContainsKey("sections"))
+                                    {
+                                        var sectionsArray = actualJsonData["sections"];
+                                        _logger.LogInformation("Secciones encontradas en JSON real: {SectionsCount}", sectionsArray.ValueKind == JsonValueKind.Array ? sectionsArray.GetArrayLength() : 0);
+                                        
+                                        if (sectionsArray.ValueKind == JsonValueKind.Array)
+                                        {
+                                            foreach (var sectionElement in sectionsArray.EnumerateArray())
+                                            {
+                                                var section = ParseSectionFromJson(sectionElement);
+                                                if (section != null)
+                                                {
+                                                    sections.Add(section);
+                                                    _logger.LogInformation("Sección parseada: {Title}", section.Title);
+                                                }
+                                                else
+                                                {
+                                                    _logger.LogWarning("Sección no pudo ser parseada");
+                                                }
+                                            }
+                                        }
+                                        else
+                                        {
+                                            _logger.LogWarning("La propiedad 'sections' no es un array: {ValueKind}", sectionsArray.ValueKind);
+                                        }
+                                    }
+                                    else
+                                    {
+                                        _logger.LogWarning("No se encontró la propiedad 'sections' en el JSON real. Propiedades disponibles: {Properties}", actualJsonData != null ? string.Join(", ", actualJsonData.Keys) : "null");
+                                    }
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("El contenido de texto está vacío después de limpiar");
+                                }
+                            }
+                            else
+                            {
+                                _logger.LogWarning("No se encontró la propiedad 'text' en el primer elemento de content");
+                            }
+                        }
+                        else
+                        {
+                            _logger.LogWarning("El array 'content' está vacío");
+                        }
+                    }
+                    else if (jsonData != null && jsonData.ContainsKey("sections"))
+                    {
+                        // Formato directo (fallback)
+                        var sectionsArray = jsonData["sections"];
+                        _logger.LogInformation("Secciones encontradas en JSON directo: {SectionsCount}", sectionsArray.ValueKind == JsonValueKind.Array ? sectionsArray.GetArrayLength() : 0);
+                        
+                        if (sectionsArray.ValueKind == JsonValueKind.Array)
+                        {
+                            foreach (var sectionElement in sectionsArray.EnumerateArray())
+                            {
+                                var section = ParseSectionFromJson(sectionElement);
+                                if (section != null)
+                                {
+                                    sections.Add(section);
+                                    _logger.LogInformation("Sección parseada: {Title}", section.Title);
+                                }
+                                else
+                                {
+                                    _logger.LogWarning("Sección no pudo ser parseada");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        _logger.LogWarning("No se encontró la estructura esperada. Propiedades disponibles: {Properties}", jsonData != null ? string.Join(", ", jsonData.Keys) : "null");
+                    }
+                }
+                catch (JsonException ex)
+                {
+                    _logger.LogError(ex, "Error deserializando JSON de AI: {JsonContent}", jsonContent);
+                    return CreateFallbackSection(aiResponse);
+                }
+                
+                if (sections.Count == 0)
+                {
+                    _logger.LogWarning("No se pudieron parsear secciones válidas, usando fallback");
+                    return CreateFallbackSection(aiResponse);
+                }
+                
+                _logger.LogInformation("Secciones parseadas exitosamente: {Count}", sections.Count);
                 return sections;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error parseando respuesta de AI");
-                return new List<PDFSection>();
+                return CreateFallbackSection(aiResponse);
             }
+        }
+        
+        private PDFSection? ParseSectionFromJson(JsonElement sectionElement)
+        {
+            try
+            {
+                var section = new PDFSection();
+                
+                if (sectionElement.TryGetProperty("title", out var titleElement))
+                    section.Title = titleElement.GetString() ?? "Sin título";
+                
+                if (sectionElement.TryGetProperty("subtitle", out var subtitleElement))
+                    section.Subtitle = subtitleElement.GetString() ?? "";
+                
+                if (sectionElement.TryGetProperty("content", out var contentElement))
+                    section.Content = contentElement.GetString() ?? "";
+                
+                if (sectionElement.TryGetProperty("pageNumber", out var pageElement))
+                    section.PageNumber = pageElement.GetInt32();
+                
+                if (sectionElement.TryGetProperty("order", out var orderElement))
+                    section.Order = orderElement.GetInt32();
+                
+                if (sectionElement.TryGetProperty("keywords", out var keywordsElement) && keywordsElement.ValueKind == JsonValueKind.Array)
+                {
+                    section.Keywords = keywordsElement.EnumerateArray()
+                        .Select(k => k.GetString())
+                        .Where(k => !string.IsNullOrEmpty(k))
+                        .ToList();
+                }
+                else
+                {
+                    section.Keywords = new List<string>();
+                }
+                
+                if (sectionElement.TryGetProperty("contentType", out var contentTypeElement))
+                    section.ContentType = contentTypeElement.GetString() ?? "texto";
+                
+                // Generar ID único para la sección
+                section.Id = Guid.NewGuid().ToString();
+                
+                return section;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error parseando sección individual del JSON");
+                return null;
+            }
+        }
+        
+        private List<PDFSection> CreateFallbackSection(string aiResponse)
+        {
+            return new List<PDFSection>
+            {
+                new PDFSection
+                {
+                    Id = Guid.NewGuid().ToString(),
+                    Title = "Contenido del Informe",
+                    Content = aiResponse.Length > 1000 ? aiResponse.Substring(0, 1000) + "..." : aiResponse,
+                    PageNumber = 1,
+                    Order = 1,
+                    Keywords = new List<string> { "informe", "financiero", "análisis" },
+                    ContentType = "texto"
+                }
+            };
         }
 
         private async Task<GeneratedSectionTemplate> GenerateSectionTemplateAsync(PDFSection section, List<Area> availableAreas)

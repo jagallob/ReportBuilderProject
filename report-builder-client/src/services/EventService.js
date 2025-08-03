@@ -1,6 +1,4 @@
-import API_BASE_URL from "../environments/api.config";
-
-const API_URL = `${API_BASE_URL}`;
+import { API_URL } from "../environments/api.config";
 
 export const EventService = {
   getEventsByArea: async (areaId) => {

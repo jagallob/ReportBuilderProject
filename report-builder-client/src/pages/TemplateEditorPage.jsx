@@ -83,13 +83,21 @@ const TemplateEditorPage = () => {
     navigate("/dashboard/reports");
   };
 
+  const goToHome = () => {
+    navigate("/admin");
+  };
+
   if (loading) return <div className="p-8">Cargando plantilla...</div>;
   if (error) return <div className="p-8 text-red-600">Error: {error}</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="pb-6">
-        <HeaderActions onViewReports={goToReports} onCancel={handleLogout} />
+        <HeaderActions
+          onViewReports={goToReports}
+          onCancel={handleLogout}
+          onGoHome={goToHome}
+        />
       </div>
       <TemplateEditor
         initialTemplate={template}

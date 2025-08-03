@@ -1,7 +1,5 @@
-import API_BASE_URL from "../environments/api.config";
+import { API_URL } from "../environments/api.config";
 import { JSON_HEADERS } from "../environments/http-headers";
-
-const API_URL = `${API_BASE_URL}`;
 
 export const ConsolidatedTemplateService = {
   // Obtener todas las plantillas consolidadas

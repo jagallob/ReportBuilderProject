@@ -60,6 +60,23 @@ namespace ReportBuilderAPI.Controllers
             }
         }
 
+        /// <summary>
+        /// Endpoint de prueba para verificar autenticación (sin requerir rol específico)
+        /// </summary>
+        [HttpGet("test-auth")]
+        [Authorize]
+        [EnableCors("_myAllowSpecificOrigins")]
+        public ActionResult<object> TestAuth()
+        {
+            return Ok(new
+            {
+                IsAuthenticated = User.Identity?.IsAuthenticated,
+                UserName = User.Identity?.Name,
+                Roles = User.Claims.Where(c => c.Type == System.Security.Claims.ClaimTypes.Role).Select(c => c.Value).ToList(),
+                Claims = User.Claims.Select(c => new { Type = c.Type, Value = c.Value }).ToList()
+            });
+        }
+
         public class UserLoginRequest
         {
             public string Email { get; set; } = string.Empty;

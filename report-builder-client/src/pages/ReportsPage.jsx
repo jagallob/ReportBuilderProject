@@ -33,10 +33,18 @@ const ReportsPage = () => {
     navigate("/dashboard/reports");
   };
 
+  const goToHome = () => {
+    navigate("/admin");
+  };
+
   return (
     <>
       <div className="pb-6">
-        <HeaderActions onViewReports={goToReports} onCancel={handleLogout} />
+        <HeaderActions
+          onViewReports={goToReports}
+          onCancel={handleLogout}
+          onGoHome={goToHome}
+        />
       </div>
       <div className="p-6 max-w-5xl mx-auto mt-8">
         <h1 className="text-2xl font-bold mb-6 text-gray-800">

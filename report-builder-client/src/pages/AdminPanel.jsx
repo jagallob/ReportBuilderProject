@@ -37,6 +37,10 @@ const AdminPanel = () => {
     navigate("/dashboard/reports");
   };
 
+  const goToHome = () => {
+    navigate("/admin");
+  };
+
   const goToConsolidatedTemplates = () => {
     navigate("/admin/consolidated-templates");
   };
@@ -48,7 +52,11 @@ const AdminPanel = () => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6">
       <div className="pb-6">
-        <HeaderActions onViewReports={goToReports} onCancel={handleLogout} />
+        <HeaderActions
+          onViewReports={goToReports}
+          onCancel={handleLogout}
+          onGoHome={goToHome}
+        />
       </div>
       <div className="max-w-4xl mx-auto bg-white p-8 rounded-xl shadow-xl">
         <h1 className="text-3xl font-bold text-blue-800 mb-2">
@@ -85,6 +93,13 @@ const AdminPanel = () => {
             onClick={() => navigate("/admin/pdf-analysis")}
           >
             📄 Analizar PDF
+          </button>
+
+          <button
+            className="bg-teal-600 hover:bg-teal-700 text-white font-semibold py-3 px-4 rounded-lg"
+            onClick={() => navigate("/admin/hybrid-template-builder")}
+          >
+            🎨 Constructor Híbrido
           </button>
 
           <button

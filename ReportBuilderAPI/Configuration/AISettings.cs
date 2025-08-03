@@ -46,7 +46,7 @@
         public string Model { get; set; } = "claude-sonnet-4-20250514";
         public double Temperature { get; set; } = 0.7;
         public int MaxTokens { get; set; } = 4000;
-        public int TimeoutSeconds { get; set; } = 60;
+        public int TimeoutSeconds { get; set; } = 300;
         public string Endpoint { get; set; } = "https://api.anthropic.com/v1/messages";
     }
 }

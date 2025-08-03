@@ -34,6 +34,7 @@ namespace ReportBuilderAPI.Models
         public List<string> Keywords { get; set; } = new List<string>();
         public string SuggestedArea { get; set; } = string.Empty;
         public double Confidence { get; set; } = 0.0;
+        public string ContentType { get; set; } = "texto";
     }
 
     /// <summary>

@@ -1,11 +1,11 @@
-import API_BASE_URL from "../environments/api.config";
+import { API_URL } from "../environments/api.config";
 import { JSON_HEADERS } from "../environments/http-headers";
 
-const API_URL = `${API_BASE_URL}/api/Templates`;
+const TEMPLATES_API_URL = `${API_URL}/api/Templates`;
 
 export const TemplateService = {
   getAllTemplates: async () => {
-    const response = await fetch(API_URL);
+    const response = await fetch(TEMPLATES_API_URL);
     if (!response.ok) {
       throw new Error("Error al obtener plantillas");
     }
@@ -13,7 +13,7 @@ export const TemplateService = {
   },
 
   getTemplate: async (id) => {
-    const response = await fetch(`${API_URL}/${id}`);
+    const response = await fetch(`${TEMPLATES_API_URL}/${id}`);
     if (!response.ok) {
       throw new Error(`Error al obtener plantilla ID ${id}`);
     }
@@ -21,7 +21,7 @@ export const TemplateService = {
   },
 
   createTemplate: async (template) => {
-    const response = await fetch(API_URL, {
+    const response = await fetch(TEMPLATES_API_URL, {
       method: "POST",
       headers: JSON_HEADERS,
       body: JSON.stringify(template),
@@ -33,7 +33,7 @@ export const TemplateService = {
   },
 
   updateTemplate: async (id, template) => {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${TEMPLATES_API_URL}/${id}`, {
       method: "PUT",
       headers: JSON_HEADERS,
       body: JSON.stringify(template),
@@ -45,7 +45,7 @@ export const TemplateService = {
   },
 
   deleteTemplate: async (id) => {
-    const response = await fetch(`${API_URL}/${id}`, {
+    const response = await fetch(`${TEMPLATES_API_URL}/${id}`, {
       method: "DELETE",
     });
     if (!response.ok) {
