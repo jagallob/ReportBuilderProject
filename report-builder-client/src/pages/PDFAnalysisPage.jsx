@@ -2,9 +2,10 @@ import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import PDFAnalysisService from "../services/PDFAnalysisService";
 import { useAuth } from "../context/AuthContext";
+import HeaderActions from "../layouts/HeaderActions";
 
 const PDFAnalysisPage = () => {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
   const fileInputRef = useRef(null);
 
@@ -36,6 +37,32 @@ const PDFAnalysisPage = () => {
     }
   };
 
+  const testAuth = async () => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const result = await PDFAnalysisService.testAuth();
+      console.log("Auth test result:", result);
+      setError("Autenticación exitosa: " + JSON.stringify(result, null, 2));
+    } catch (err) {
+      setError("Error de autenticación: " + err.message);
+
+      // Si es un error de autenticación, redirigir al login
+      if (
+        err.message.includes("Token inválido") ||
+        err.message.includes("autenticación")
+      ) {
+        setTimeout(() => {
+          logout();
+          navigate("/login");
+        }, 2000);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleAnalyze = async () => {
     if (!pdfFile || !templateName || !period) {
       setError("Por favor complete todos los campos requeridos");
@@ -55,10 +82,49 @@ const PDFAnalysisPage = () => {
         analysisConfig
       );
 
+      // Debug: Log the result
+      console.log("Result from backend:", result);
+      console.log("Result sections:", result?.sections);
+      console.log("Sections length:", result?.sections?.length);
+
+      // Verificar que el resultado sea válido
+      if (!result || !result.sections || result.sections.length === 0) {
+        throw new Error(
+          "El análisis no devolvió resultados válidos. Intente nuevamente."
+        );
+      }
+
       setAnalysisResult(result);
       setShowCreateForm(true);
     } catch (err) {
-      setError(err.message);
+      console.error("Error en análisis de PDF:", err);
+
+      // Determinar el tipo de error
+      let errorMessage = err.message;
+
+      if (err.message.includes("timeout") || err.message.includes("canceled")) {
+        errorMessage =
+          "El análisis tardó demasiado tiempo. Intente con un archivo más pequeño o verifique su conexión a internet.";
+      } else if (
+        err.message.includes("Sesión expirada") ||
+        err.message.includes("autenticación")
+      ) {
+        errorMessage = "Sesión expirada. Será redirigido al login.";
+        setTimeout(() => {
+          logout();
+          navigate("/login");
+        }, 2000);
+      } else if (err.message.includes("400")) {
+        errorMessage =
+          "Error en los datos enviados. Verifique que todos los campos requeridos estén completos.";
+      } else if (err.message.includes("500")) {
+        errorMessage =
+          "Error interno del servidor. Intente nuevamente más tarde.";
+      }
+
+      setError(errorMessage);
+      setAnalysisResult(null);
+      setShowCreateForm(false);
     } finally {
       setLoading(false);
     }
@@ -99,6 +165,17 @@ const PDFAnalysisPage = () => {
       });
     } catch (err) {
       setError(err.message);
+
+      // Si es un error de autenticación, redirigir al login
+      if (
+        err.message.includes("Sesión expirada") ||
+        err.message.includes("autenticación")
+      ) {
+        setTimeout(() => {
+          logout();
+          navigate("/login");
+        }, 2000);
+      }
     } finally {
       setLoading(false);
     }
@@ -126,6 +203,19 @@ const PDFAnalysisPage = () => {
     }
   };
 
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  const goToReports = () => {
+    navigate("/dashboard/reports");
+  };
+
+  const goToHome = () => {
+    navigate("/admin");
+  };
+
   if (!user || user.role !== "admin") {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -142,30 +232,26 @@ const PDFAnalysisPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6">
+      <div className="pb-6">
+        <HeaderActions
+          onViewReports={goToReports}
+          onCancel={handleLogout}
+          onGoHome={goToHome}
+        />
+      </div>
+      <div className="max-w-6xl mx-auto">
         <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                Análisis de PDF
-              </h1>
-              <p className="mt-2 text-gray-600">
-                Analiza un archivo PDF para generar plantillas consolidadas
-                automáticamente
-              </p>
-            </div>
-            <button
-              onClick={() => navigate("/admin/consolidated-templates")}
-              className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg"
-            >
-              ← Volver a Plantillas
-            </button>
-          </div>
+          <h1 className="text-3xl font-bold text-blue-800 mb-2">
+            Análisis de PDF
+          </h1>
+          <p className="text-gray-600">
+            Sube un archivo PDF para analizar su estructura y crear una
+            plantilla consolidada
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid lg:grid-cols-2 gap-8">
           {/* Formulario de Análisis */}
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">
@@ -335,6 +421,17 @@ const PDFAnalysisPage = () => {
               </button>
             </div>
 
+            {/* Botón de prueba de autenticación */}
+            <div className="mt-3">
+              <button
+                onClick={testAuth}
+                disabled={loading}
+                className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white py-2 px-4 rounded-lg"
+              >
+                🔐 Probar Autenticación
+              </button>
+            </div>
+
             {error && (
               <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
                 {error}
@@ -374,49 +471,63 @@ const PDFAnalysisPage = () => {
                 {/* Secciones identificadas */}
                 <div>
                   <h3 className="font-medium text-gray-900 mb-3">
-                    Secciones Identificadas ({analysisResult.sections.length})
+                    Secciones Identificadas (
+                    {analysisResult?.sections?.length || 0})
                   </h3>
                   <div className="space-y-3 max-h-64 overflow-y-auto">
-                    {analysisResult.sections.map((section, index) => (
-                      <div
-                        key={section.id}
-                        className="border border-gray-200 rounded-lg p-3"
-                      >
-                        <div className="flex justify-between items-start mb-2">
-                          <h4 className="font-medium text-sm">
-                            {section.title}
-                          </h4>
-                          <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                            Página {section.pageNumber}
-                          </span>
-                        </div>
-                        {section.subtitle && (
-                          <p className="text-xs text-gray-600 mb-2">
-                            {section.subtitle}
-                          </p>
-                        )}
-                        <div className="flex flex-wrap gap-1">
-                          {section.components.map((component) => (
-                            <span
-                              key={component.id}
-                              className={`text-xs px-2 py-1 rounded ${PDFAnalysisService.getComponentTypeColor(
-                                component.type
-                              )}`}
-                            >
-                              {PDFAnalysisService.getComponentTypeIcon(
-                                component.type
-                              )}{" "}
-                              {component.type}
-                            </span>
-                          ))}
-                        </div>
+                    {!analysisResult?.sections ||
+                    analysisResult.sections.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        <p>No se identificaron secciones en el PDF.</p>
+                        <p className="text-sm mt-1">Esto puede deberse a:</p>
+                        <ul className="text-xs mt-2 space-y-1">
+                          <li>• El PDF no tiene estructura clara</li>
+                          <li>• Problemas de conectividad con la IA</li>
+                          <li>• El archivo es muy grande o complejo</li>
+                        </ul>
                       </div>
-                    ))}
+                    ) : (
+                      analysisResult.sections.map((section, index) => (
+                        <div
+                          key={section.id}
+                          className="border border-gray-200 rounded-lg p-3"
+                        >
+                          <div className="flex justify-between items-start mb-2">
+                            <h4 className="font-medium text-sm">
+                              {section.title}
+                            </h4>
+                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                              Página {section.pageNumber}
+                            </span>
+                          </div>
+                          {section.subtitle && (
+                            <p className="text-xs text-gray-600 mb-2">
+                              {section.subtitle}
+                            </p>
+                          )}
+                          <div className="flex flex-wrap gap-1">
+                            {section.components.map((component) => (
+                              <span
+                                key={component.id}
+                                className={`text-xs px-2 py-1 rounded ${PDFAnalysisService.getComponentTypeColor(
+                                  component.type
+                                )}`}
+                              >
+                                {PDFAnalysisService.getComponentTypeIcon(
+                                  component.type
+                                )}{" "}
+                                {component.type}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
                   </div>
                 </div>
 
                 {/* Asignaciones sugeridas */}
-                {analysisResult.suggestedAssignments.length > 0 && (
+                {analysisResult?.suggestedAssignments?.length > 0 && (
                   <div>
                     <h3 className="font-medium text-gray-900 mb-3">
                       Asignaciones Sugeridas
@@ -464,7 +575,7 @@ const PDFAnalysisPage = () => {
                     </button>
                     <p className="text-xs text-gray-500 mt-2 text-center">
                       Se creará una plantilla con{" "}
-                      {analysisResult.sections.length} secciones
+                      {analysisResult?.sections?.length || 0} secciones
                     </p>
                   </div>
                 )}

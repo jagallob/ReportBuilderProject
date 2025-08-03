@@ -93,7 +93,23 @@ builder.Services.AddAuthentication(options =>
         ValidAudience = Environment.GetEnvironmentVariable("JWT_AUDIENCE") ?? builder.Configuration["JwtSettings:Audience"],
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
             Environment.GetEnvironmentVariable("JWT_SECRET") ?? builder.Configuration["JwtSettings:SecretKey"]!
-        ))
+        )),
+        ClockSkew = TimeSpan.Zero
+    };
+    
+    // Add event handlers for debugging
+    options.Events = new JwtBearerEvents
+    {
+        OnAuthenticationFailed = context =>
+        {
+            Console.WriteLine($"JWT Authentication failed: {context.Exception.Message}");
+            return Task.CompletedTask;
+        },
+        OnTokenValidated = context =>
+        {
+            Console.WriteLine($"JWT Token validated for user: {context.Principal?.Identity?.Name}");
+            return Task.CompletedTask;
+        }
     };
 });
 

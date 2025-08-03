@@ -1,7 +1,7 @@
 import React from "react";
 import { useAuth } from "../context/AuthContext";
 
-const HeaderActions = ({ onViewReports, onCancel }) => {
+const HeaderActions = ({ onViewReports, onCancel, onGoHome }) => {
   const { user } = useAuth();
 
   return (
@@ -37,6 +37,16 @@ const HeaderActions = ({ onViewReports, onCancel }) => {
 
       {/* Botones de acción */}
       <div className="flex items-center space-x-3">
+        {/* Botón "Volver al Inicio" solo para admin */}
+        {user?.role === "admin" && onGoHome && (
+          <button
+            onClick={onGoHome}
+            className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition border border-green-200"
+          >
+            🏠 Volver al Inicio
+          </button>
+        )}
+
         <button
           onClick={onViewReports}
           className="px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition border border-blue-200"

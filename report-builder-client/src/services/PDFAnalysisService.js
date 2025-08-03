@@ -1,8 +1,43 @@
-import API_BASE_URL from "../environments/api.config";
-
-const API_URL = `${API_BASE_URL}`;
+import { API_URL } from "../environments/api.config";
 
 export const PDFAnalysisService = {
+  /**
+   * Prueba la autenticación del usuario
+   */
+  testAuth: async () => {
+    try {
+      const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error("No se encontró token de autenticación");
+      }
+
+      const response = await fetch(
+        `${API_URL}/api/ConsolidatedTemplates/test-auth`,
+        {
+          method: "GET",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      if (response.status === 401) {
+        throw new Error("Token inválido o expirado");
+      }
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      return await response.json();
+    } catch (error) {
+      console.error("Error testing auth:", error);
+      throw error;
+    }
+  },
+
   /**
    * Analiza un archivo PDF y sugiere estructura para plantilla consolidada
    */
@@ -26,6 +61,31 @@ export const PDFAnalysisService = {
 
     try {
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error(
+          "No se encontró token de autenticación. Por favor, inicie sesión nuevamente."
+        );
+      }
+
+      // Debug: Log token information
+      console.log("Token found:", token ? "Yes" : "No");
+      console.log("Token length:", token ? token.length : 0);
+
+      // Decode token to check expiration
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        console.log("Token payload:", payload);
+        console.log("Token expiration:", new Date(payload.exp * 1000));
+        console.log("Current time:", new Date());
+        console.log(
+          "Token expired:",
+          new Date(payload.exp * 1000) < new Date()
+        );
+      } catch (e) {
+        console.log("Error decoding token:", e);
+      }
+
       const response = await fetch(
         `${API_URL}/api/ConsolidatedTemplates/analyze-pdf`,
         {
@@ -36,6 +96,14 @@ export const PDFAnalysisService = {
           body: formData,
         }
       );
+
+      if (response.status === 401) {
+        // Token expirado o inválido
+        localStorage.removeItem("token");
+        throw new Error(
+          "Sesión expirada. Por favor, inicie sesión nuevamente."
+        );
+      }
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -74,6 +142,13 @@ export const PDFAnalysisService = {
 
     try {
       const token = localStorage.getItem("token");
+
+      if (!token) {
+        throw new Error(
+          "No se encontró token de autenticación. Por favor, inicie sesión nuevamente."
+        );
+      }
+
       const response = await fetch(
         `${API_URL}/api/ConsolidatedTemplates/from-pdf`,
         {
@@ -84,6 +159,14 @@ export const PDFAnalysisService = {
           body: formData,
         }
       );
+
+      if (response.status === 401) {
+        // Token expirado o inválido
+        localStorage.removeItem("token");
+        throw new Error(
+          "Sesión expirada. Por favor, inicie sesión nuevamente."
+        );
+      }
 
       if (!response.ok) {
         const errorText = await response.text();

@@ -6,6 +6,7 @@ import ReportsPage from "./pages/ReportsPage";
 import AdminPanel from "./pages/AdminPanel";
 import ConsolidatedTemplatesPage from "./pages/ConsolidatedTemplatesPage";
 import PDFAnalysisPage from "./pages/PDFAnalysisPage";
+import HybridTemplateBuilderPage from "./pages/HybridTemplateBuilderPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -57,6 +58,16 @@ function App() {
           element={
             <PrivateRoute
               element={<PDFAnalysisPage />}
+              allowedRoles={["admin"]}
+            />
+          }
+        />
+
+        <Route
+          path="/admin/hybrid-template-builder"
+          element={
+            <PrivateRoute
+              element={<HybridTemplateBuilderPage />}
               allowedRoles={["admin"]}
             />
           }

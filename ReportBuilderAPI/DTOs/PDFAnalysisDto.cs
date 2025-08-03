@@ -16,7 +16,7 @@ namespace ReportBuilderAPI.DTOs
         public string TemplateName { get; set; } = string.Empty;
 
         [StringLength(500)]
-        public string Description { get; set; } = string.Empty;
+        public string? Description { get; set; }
 
         [Required]
         [StringLength(50)]

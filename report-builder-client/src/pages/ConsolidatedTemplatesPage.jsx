@@ -71,6 +71,10 @@ const ConsolidatedTemplatesPage = () => {
     navigate("/admin");
   };
 
+  const goToHome = () => {
+    navigate("/admin");
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6">
@@ -95,6 +99,7 @@ const ConsolidatedTemplatesPage = () => {
           <HeaderActions
             onViewReports={() => navigate("/dashboard/reports")}
             onCancel={handleBack}
+            onGoHome={goToHome}
           />
         </div>
 
