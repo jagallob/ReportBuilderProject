@@ -5,10 +5,12 @@ import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "react-toastify";
 import UserService from "../services/UserService";
 import HeaderActions from "../layouts/HeaderActions";
+import { useAuth } from "../context/AuthContext";
 
 const TemplateEditorPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [template, setTemplate] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -84,7 +86,11 @@ const TemplateEditorPage = () => {
   };
 
   const goToHome = () => {
-    navigate("/admin");
+    if (user?.role === "admin") {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   if (loading) return <div className="p-8">Cargando plantilla...</div>;

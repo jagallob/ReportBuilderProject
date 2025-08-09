@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 import TemplateEditor from "../components/TemplateEditor";
 import AreaAssignmentPanel from "../components/AreaAssignmentPanel";
 import AreaAssignmentService from "../services/AreaAssignmentService";
 import { toast } from "react-toastify";
+import HeaderActions from "../layouts/HeaderActions";
 import {
   DocumentTextIcon,
   UserGroupIcon,
@@ -13,6 +15,7 @@ import {
 
 const HybridTemplateBuilderPage = () => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [template, setTemplate] = useState(null);
   const [availableAreas, setAvailableAreas] = useState([]);
@@ -56,7 +59,7 @@ const HybridTemplateBuilderPage = () => {
     }
   };
 
-  const handleManualAssign = (assignments) => {
+  const handleManualAssign = () => {
     // Aquí podrías abrir un modal o navegar a una página de asignación manual
     toast.info("Modo de asignación manual activado");
   };
@@ -98,6 +101,19 @@ const HybridTemplateBuilderPage = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleLogout = () => {
+    logout();
+    navigate("/");
+  };
+
+  const goToReports = () => {
+    navigate("/dashboard/reports");
+  };
+
+  const goToHome = () => {
+    navigate("/admin");
   };
 
   const getCurrentStepContent = () => {
@@ -275,20 +291,27 @@ const HybridTemplateBuilderPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Header */}
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white p-6">
+      <div className="pb-6">
+        <HeaderActions
+          onViewReports={goToReports}
+          onCancel={handleLogout}
+          onGoHome={goToHome}
+        />
+      </div>
+      <div className="max-w-7xl mx-auto bg-white p-8 rounded-xl shadow-xl">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
+          <h1 className="text-3xl font-bold text-blue-800">
             Constructor Híbrido de Plantillas
           </h1>
           <p className="mt-2 text-gray-600">
-            Crea plantillas manualmente y asigna áreas automáticamente
+            Crea plantillas manualmente y asigna áreas de responsabilidad a
+            través de un proceso guiado.
           </p>
         </div>
 
         {/* Progress Steps */}
-        <div className="mb-8">
+        <div className="mb-12">
           <nav aria-label="Progress">
             <ol className="flex items-center">
               {steps.map((step, stepIdx) => (
@@ -311,7 +334,7 @@ const HybridTemplateBuilderPage = () => {
                     )}
                   </div>
                   <div
-                    className={`relative flex h-8 w-8 items-center justify-center rounded-full ${
+                    className={`relative flex h-10 w-10 items-center justify-center rounded-full ${
                       step.id < currentStep
                         ? "bg-blue-600 hover:bg-blue-900"
                         : step.id === currentStep
@@ -320,7 +343,7 @@ const HybridTemplateBuilderPage = () => {
                     }`}
                   >
                     <step.icon
-                      className={`h-5 w-5 ${
+                      className={`h-6 w-6 ${
                         step.id <= currentStep ? "text-white" : "text-gray-400"
                       }`}
                       aria-hidden="true"

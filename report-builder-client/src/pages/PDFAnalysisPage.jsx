@@ -487,7 +487,7 @@ const PDFAnalysisPage = () => {
                         </ul>
                       </div>
                     ) : (
-                      analysisResult.sections.map((section, index) => (
+                      analysisResult.sections.map((section) => (
                         <div
                           key={section.id}
                           className="border border-gray-200 rounded-lg p-3"

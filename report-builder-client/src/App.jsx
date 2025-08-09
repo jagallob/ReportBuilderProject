@@ -4,8 +4,11 @@ import PrivateRoute from "./routes/PrivateRoute";
 import TemplateEditorPage from "./pages/TemplateEditorPage";
 import ReportsPage from "./pages/ReportsPage";
 import AdminPanel from "./pages/AdminPanel";
+import UserDashboardPage from "./pages/UserDashboardPage";
 import ConsolidatedTemplatesPage from "./pages/ConsolidatedTemplatesPage";
 import PDFAnalysisPage from "./pages/PDFAnalysisPage";
+import MyTasksPage from "./pages/MyTasksPage";
+import SectionCompletionPage from "./pages/SectionCompletionPage";
 import HybridTemplateBuilderPage from "./pages/HybridTemplateBuilderPage";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -20,7 +23,37 @@ function App() {
           path="/dashboard"
           element={
             <PrivateRoute
+              element={<UserDashboardPage />}
+              allowedRoles={["admin", "manager", "user"]}
+            />
+          }
+        />
+
+        <Route
+          path="/dashboard/create-report"
+          element={
+            <PrivateRoute
               element={<TemplateEditorPage />}
+              allowedRoles={["admin", "manager", "user"]}
+            />
+          }
+        />
+
+        <Route
+          path="/dashboard/my-tasks"
+          element={
+            <PrivateRoute
+              element={<MyTasksPage />}
+              allowedRoles={["admin", "manager", "user"]}
+            />
+          }
+        />
+
+        <Route
+          path="/dashboard/template/:templateId/section/:sectionId"
+          element={
+            <PrivateRoute
+              element={<SectionCompletionPage />}
               allowedRoles={["admin", "manager", "user"]}
             />
           }
