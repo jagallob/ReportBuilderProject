@@ -126,25 +126,20 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy(MyAllowSpecificOrigins, policy =>
     {
-        if (builder.Environment.IsDevelopment())
-        {
-            // More permissive CORS for development
-            policy
-                .SetIsOriginAllowed(origin => true) // Allow any origin in development
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        }
-        else
-        {
-            // Restrictive CORS for production
-            policy
-                .WithOrigins("http://localhost:5173", "https://localhost:5173")
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials()
-                .SetIsOriginAllowedToAllowWildcardSubdomains();
-        }
+        // Esta política permite que el frontend se conecte desde cualquier puerto de localhost.
+        // Es útil para desarrollo, ya que Vite (el servidor de desarrollo de React) 
+        // puede elegir un puerto diferente si el 5173 está ocupado.
+        policy.SetIsOriginAllowed(origin => {
+            if (string.IsNullOrWhiteSpace(origin)) return false;
+            // Permite http://localhost, https://localhost con cualquier puerto.
+            var uri = new Uri(origin);
+            return uri.Host == "localhost" || uri.Host == "127.0.0.1";
+        })
+        .AllowAnyHeader()
+        .AllowAnyMethod()
+        .AllowCredentials();
+
+        // Para un entorno de producción real, deberías restringir los orígenes a tu dominio de producción.
     });
 });
 

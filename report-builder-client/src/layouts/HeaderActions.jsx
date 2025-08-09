@@ -37,8 +37,8 @@ const HeaderActions = ({ onViewReports, onCancel, onGoHome }) => {
 
       {/* Botones de acción */}
       <div className="flex items-center space-x-3">
-        {/* Botón "Volver al Inicio" solo para admin */}
-        {user?.role === "admin" && onGoHome && (
+        {/* Botón "Volver al Inicio" para todas las páginas que no son el dashboard principal */}
+        {onGoHome && (
           <button
             onClick={onGoHome}
             className="px-4 py-2 text-sm font-medium text-green-600 bg-green-50 hover:bg-green-100 rounded-md transition border border-green-200"

@@ -53,12 +53,6 @@ namespace ReportBuilderAPI.Controllers
         {
             try
             {
-                var isAdmin = User.IsInRole("Admin");
-                if (!isAdmin)
-                {
-                    Console.WriteLine("Usuario no tiene rol Admin");
-                    return Forbid();
-                }
                 var templates = await _context.ConsolidatedTemplates
                     .Include(ct => ct.CreatedByUser)
                     .Include(ct => ct.Sections)
@@ -147,6 +141,101 @@ namespace ReportBuilderAPI.Controllers
                 _logger.LogError(ex, $"Error al obtener plantilla consolidada con ID {id}");
                 return StatusCode(500, "Error interno del servidor");
             }
+        }
+
+        /// <summary>
+        /// Obtiene las secciones de informes consolidados asignadas al área del usuario actual.
+        /// </summary>
+        [HttpGet("my-sections")]
+        [Authorize(Roles = "Admin,admin,Manager,User,manager,user")]
+        public async Task<ActionResult<IEnumerable<ConsolidatedTemplateSectionDto>>> GetMyAssignedSections()
+        {
+            try
+            {
+                var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+                if (!int.TryParse(userIdClaim, out int currentUserId))
+                {
+                    return Unauthorized("Usuario no válido.");
+                }
+
+                var user = await _context.Users.FindAsync(currentUserId);
+                if (user == null || user.AreaId == null)
+                {
+                    // Si el usuario no tiene un área, no tiene tareas asignadas.
+                    return Ok(new List<ConsolidatedTemplateSectionDto>());
+                }
+
+                var sections = await _context.ConsolidatedTemplateSections
+                    .Include(s => s.ConsolidatedTemplate)
+                    .Where(s => s.AreaId == user.AreaId && s.ConsolidatedTemplate.Status == "in_progress")
+                    .Select(s => new ConsolidatedTemplateSectionDto
+                    {
+                        Id = s.Id,
+                        ConsolidatedTemplateId = s.ConsolidatedTemplateId,
+                        SectionTitle = s.SectionTitle,
+                        Status = s.Status,
+                        SectionDeadline = s.SectionDeadline,
+                        ConsolidatedTemplateName = s.ConsolidatedTemplate.Name,
+                        Period = s.ConsolidatedTemplate.Period
+                    })
+                    .OrderBy(s => s.SectionDeadline)
+                    .ToListAsync();
+
+                return Ok(sections);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener las secciones asignadas al usuario.");
+                return StatusCode(500, "Error interno del servidor.");
+            }
+        }
+
+        /// <summary>
+        /// Obtiene una sección específica para que un usuario la complete.
+        /// </summary>
+        [HttpGet("{templateId}/sections/{sectionId}")]
+        [Authorize(Roles = "Admin,admin,Manager,User,manager,user")]
+        public async Task<ActionResult<ConsolidatedTemplateSectionDto>> GetSectionForCompletion(int templateId, int sectionId)
+        {
+            var section = await _context.ConsolidatedTemplateSections
+                .Include(s => s.ConsolidatedTemplate)
+                .FirstOrDefaultAsync(s => s.Id == sectionId && s.ConsolidatedTemplateId == templateId);
+
+            if (section == null) return NotFound("Sección no encontrada.");
+
+            // Opcional: Validar que el usuario pertenece al área asignada
+            // ...
+
+            return Ok(new ConsolidatedTemplateSectionDto
+            {
+                Id = section.Id,
+                SectionTitle = section.SectionTitle,
+                SectionDescription = section.SectionDescription,
+                SectionConfiguration = section.SectionConfiguration, // La estructura vacía
+                SectionData = section.SectionData, // Los datos ya guardados por el usuario
+                ConsolidatedTemplateName = section.ConsolidatedTemplate.Name
+            });
+        }
+
+        /// <summary>
+        /// Actualiza el contenido y estado de una sección que un usuario está completando.
+        /// </summary>
+        [HttpPut("{templateId}/sections/{sectionId}/content")]
+        [Authorize(Roles = "Admin,admin,Manager,User,manager,user")]
+        public async Task<IActionResult> UpdateSectionContent(int templateId, int sectionId, [FromBody] UpdateSectionContentRequest request)
+        {
+            var section = await _context.ConsolidatedTemplateSections.FirstOrDefaultAsync(s => s.Id == sectionId && s.ConsolidatedTemplateId == templateId);
+            if (section == null) return NotFound();
+
+            // Opcional: Validar que el usuario pertenece al área asignada
+            // ...
+
+            section.SectionData = request.SectionData;
+            section.Status = request.Status; // "in_progress" o "completed"
+            section.MarkAsUpdated();
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
 
         /// <summary>
@@ -441,41 +530,12 @@ namespace ReportBuilderAPI.Controllers
         [HttpPost("analyze-pdf")]
         public async Task<ActionResult<PDFAnalysisResponse>> AnalyzePDF([FromForm] AnalyzePDFRequest request)
         {
+            (string filePath, Action cleanup) = (null, () => { });
             try
             {
-                // Debug: Log authentication information
-                _logger.LogInformation("User authenticated: {IsAuthenticated}", User.Identity?.IsAuthenticated);
-                _logger.LogInformation("User name: {UserName}", User.Identity?.Name);
-                _logger.LogInformation("User roles: {Roles}", string.Join(", ", User.Claims.Where(c => c.Type == ClaimTypes.Role).Select(c => c.Value)));
-                _logger.LogInformation("User claims: {Claims}", string.Join(", ", User.Claims.Select(c => $"{c.Type}={c.Value}")));
-
-                if (request.PDFFile == null || request.PDFFile.Length == 0)
-                {
-                    return BadRequest("No se proporcionó archivo PDF");
-                }
-
-                if (!request.PDFFile.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
-                {
-                    return BadRequest("El archivo debe ser un PDF");
-                }
-
                 _logger.LogInformation("Iniciando análisis de PDF: {FileName}", request.PDFFile.FileName);
+                (filePath, cleanup) = await SaveUploadedFile(request.PDFFile);
 
-                // Guardar archivo temporalmente
-                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "pdf-analysis");
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(request.PDFFile.FileName)}";
-                var filePath = Path.Combine(uploadPath, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await request.PDFFile.CopyToAsync(stream);
-                }
-
-                try
-                {
                     // Analizar PDF
                     var analysisResult = await _pdfAnalysisService.AnalyzePDFAsync(filePath, request.AnalysisConfig);
 
@@ -555,20 +615,19 @@ namespace ReportBuilderAPI.Controllers
 
                     _logger.LogInformation("Análisis de PDF completado. Secciones identificadas: {SectionCount}", response.Sections.Count);
                     return Ok(response);
-                }
-                finally
-                {
-                    // Limpiar archivo temporal
-                    if (System.IO.File.Exists(filePath))
-                    {
-                        System.IO.File.Delete(filePath);
-                    }
-                }
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error analizando PDF");
                 return StatusCode(500, "Error interno del servidor durante el análisis del PDF");
+            }
+            finally
+            {
+                cleanup();
             }
         }
 
@@ -578,13 +637,9 @@ namespace ReportBuilderAPI.Controllers
         [HttpPost("from-pdf")]
         public async Task<ActionResult<CreateFromPDFResponse>> CreateFromPDF([FromForm] CreateConsolidatedTemplateFromPDFRequest request)
         {
+            (string filePath, Action cleanup) = (null, () => { });
             try
             {
-                if (request.PDFFile == null || request.PDFFile.Length == 0)
-                {
-                    return BadRequest("No se proporcionó archivo PDF");
-                }
-
                 _logger.LogInformation("Creando plantilla consolidada desde PDF: {TemplateName}", request.TemplateName);
 
                 // Obtener ID del usuario actual
@@ -592,19 +647,6 @@ namespace ReportBuilderAPI.Controllers
                 if (userIdClaim == null || !int.TryParse(userIdClaim.Value, out int userId))
                 {
                     return Unauthorized("Usuario no identificado");
-                }
-
-                // Guardar archivo temporalmente
-                var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "pdf-analysis");
-                if (!Directory.Exists(uploadPath))
-                    Directory.CreateDirectory(uploadPath);
-
-                var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(request.PDFFile.FileName)}";
-                var filePath = Path.Combine(uploadPath, fileName);
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
-                {
-                    await request.PDFFile.CopyToAsync(stream);
                 }
 
                 try
@@ -745,6 +787,43 @@ namespace ReportBuilderAPI.Controllers
                 _logger.LogError(ex, "Error creando plantilla consolidada desde PDF");
                 return StatusCode(500, "Error interno del servidor durante la creación de la plantilla");
             }
+        }
+
+        private async Task<(string FilePath, Action Cleanup)> SaveUploadedFile(IFormFile file)
+        {
+            if (file == null || file.Length == 0)
+            {
+                throw new ArgumentException("No se proporcionó archivo PDF");
+            }
+
+            if (!file.ContentType.Equals("application/pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException("El archivo debe ser un PDF");
+            }
+
+            var uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "uploads", "pdf-analysis");
+            if (!Directory.Exists(uploadPath))
+            {
+                Directory.CreateDirectory(uploadPath);
+            }
+
+            var fileName = $"{Guid.NewGuid()}_{Path.GetFileName(file.FileName)}";
+            var filePath = Path.Combine(uploadPath, fileName);
+
+            using (var stream = new FileStream(filePath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+
+            Action cleanup = () =>
+            {
+                if (System.IO.File.Exists(filePath))
+                {
+                    System.IO.File.Delete(filePath);
+                }
+            };
+
+            return (filePath, cleanup);
         }
     }
 } 
